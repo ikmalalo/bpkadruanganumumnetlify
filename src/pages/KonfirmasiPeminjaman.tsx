@@ -127,7 +127,7 @@ export default function KonfirmasiPeminjaman() {
         message: isEdit 
           ? "Perubahan pada peminjaman ruangan Anda telah berhasil disimpan."
           : "Permohonan peminjaman ruangan Anda telah berhasil dikirim.",
-        onConfirm: () => navigate('/riwayat')
+        onConfirm: () => isEdit ? navigate('/riwayat') : navigate('/peminjaman', { state: null, replace: true })
       });
 
     } catch (error: any) {
