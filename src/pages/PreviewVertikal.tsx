@@ -466,15 +466,17 @@ export default function PreviewVertikal() {
         <div className="flex-1 p-3 md:p-4 flex flex-col w-full mx-auto overflow-hidden">
           <div className="flex flex-col items-center mb-3 text-center">
             <img src={logo} alt="Logo" className="h-10 mb-2 object-contain" />
-            <div className="flex flex-col items-center">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl md:text-3xl font-black text-gray-800">{format(time, "HH:mm")}</span>
-                <span className="text-base md:text-lg font-bold text-orange-500">WITA</span>
+            {!isRecording && !isPuppet && (
+              <div className="flex flex-col items-center">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl md:text-3xl font-black text-gray-800">{format(time, "HH:mm")}</span>
+                  <span className="text-base md:text-lg font-bold text-orange-500">WITA</span>
+                </div>
+                <span className={`${isPuppet ? 'text-sm md:text-base mt-1' : 'text-xs md:text-sm mt-1'} font-bold text-orange-500 uppercase tracking-widest leading-none`}>
+                  {format(time, "EEEE, dd MMMM yyyy", { locale: id })}
+                </span>
               </div>
-              <span className={`${isPuppet ? 'text-sm md:text-base mt-1' : 'text-xs md:text-sm mt-1'} font-bold text-orange-500 uppercase tracking-widest leading-none`}>
-                {format(time, "EEEE, dd MMMM yyyy", { locale: id })}
-              </span>
-            </div>
+            )}
           </div>
 
           <div className="w-full h-1.5 rounded-full overflow-hidden flex mb-3 shadow-inner bg-gray-200">
