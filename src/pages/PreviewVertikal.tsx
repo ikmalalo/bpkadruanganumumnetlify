@@ -313,6 +313,8 @@ export default function PreviewVertikal() {
       for (let i = 0; i < totalSlides; i++) {
         const slideSnapshot = slideSnapshots[i];
         const barRect = barRects[i];
+        const prevSlideSnapshot = i > 0 ? slideSnapshots[i - 1] : null;
+        const transitionFrames = 15; // 0.5 detik transisi pada 30fps
 
         for (let frame = 0; frame < framesPerSlide; frame++) {
             const currentProgress = (frame / framesPerSlide) * 100;
@@ -320,7 +322,18 @@ export default function PreviewVertikal() {
             
             ctx.fillStyle = "#ffffff";
             ctx.fillRect(0, 0, width, height);
-            ctx.drawImage(slideSnapshot, 0, 0, width, height);
+            
+            if (prevSlideSnapshot && frame < transitionFrames) {
+                // Efek geser dari kanan ke kiri
+                const progress = frame / transitionFrames;
+                const easeOut = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
+                const offsetX = width * easeOut;
+                
+                ctx.drawImage(prevSlideSnapshot, -offsetX, 0, width, height);
+                ctx.drawImage(slideSnapshot, width - offsetX, 0, width, height);
+            } else {
+                ctx.drawImage(slideSnapshot, 0, 0, width, height);
+            }
             
             // Gambar Bar Orange (Mulai dari barRect.left yang presisi)
             ctx.fillStyle = "#f97316";
