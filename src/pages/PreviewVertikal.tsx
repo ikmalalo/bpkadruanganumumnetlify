@@ -521,23 +521,23 @@ export default function PreviewVertikal() {
                         {/* Row 1: Acara & Pelaksana */}
                         <div>
                           <div className={`${isPuppet ? 'text-[8px] mb-0.5' : 'text-[9px] mb-0.5'} font-bold text-orange-500 uppercase tracking-widest`}>ACARA / AGENDA</div>
-                          <h3 className={`${isPuppet ? 'text-xs' : 'text-xs'} font-black text-gray-800 leading-tight uppercase line-clamp-5`}>{item.acara}</h3>
+                          <h3 className={`${isPuppet ? 'text-xs' : 'text-xs'} font-semibold text-gray-800 leading-tight uppercase line-clamp-5`}>{item.acara}</h3>
                         </div>
                         <div>
                           <div className={`${isPuppet ? 'text-[8px] mb-0.5' : 'text-[9px] mb-0.5'} font-bold text-orange-500 uppercase tracking-widest`}>PELAKSANA</div>
-                          <div className={`${isPuppet ? 'text-[10px]' : 'text-xs'} font-black text-gray-700 uppercase leading-snug`}>{item.pelaksana}</div>
+                          <div className={`${isPuppet ? 'text-[10px]' : 'text-xs'} font-medium text-gray-700 uppercase leading-snug`}>{item.pelaksana}</div>
                         </div>
 
                         {/* Row 2: Tempat & Dihadiri */}
                         <div>
                           <div className={`${isPuppet ? 'text-[8px] mb-0.5' : 'text-[9px] mb-0.5'} font-bold text-orange-500 uppercase tracking-widest`}>TEMPAT</div>
-                          <div className={`${isPuppet ? 'text-[10px]' : 'text-xs'} font-black text-gray-700 uppercase leading-snug`}>{item.tempat}</div>
+                          <div className={`${isPuppet ? 'text-[10px]' : 'text-xs'} font-medium text-gray-700 uppercase leading-snug`}>{item.tempat}</div>
                         </div>
                         <div>
                           {item.type === 'PEMKOT' && (
                             <>
                               <div className={`${isPuppet ? 'text-[8px] mb-0.5' : 'text-[9px] mb-0.5'} font-bold text-orange-500 uppercase tracking-widest`}>DIHADIRI</div>
-                              <div className={`${isPuppet ? 'text-[10px]' : 'text-xs'} font-black text-gray-700 uppercase leading-snug`}>{item.dihadiri || '-'}</div>
+                              <div className={`${isPuppet ? 'text-[10px]' : 'text-xs'} font-medium text-gray-700 uppercase leading-snug`}>{item.dihadiri || '-'}</div>
                             </>
                           )}
                         </div>
