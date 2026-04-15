@@ -6,6 +6,7 @@ import CertificateTable from "../components/DashboardComponents/CertificateTable
 import Toast from "../components/DashboardComponents/Toast"
 import "../index.css"
 import { supabase } from "../lib/supabaseClient"
+import { runAutoClean } from "../lib/autoClean"
 
 export default function RoomDashboard() {
 
@@ -28,6 +29,14 @@ export default function RoomDashboard() {
         .order('id', { ascending: true })
 
       if (agendaError) throw agendaError
+
+      if (agendas) {
+        const modified = await runAutoClean(agendas);
+        if (modified) {
+          fetchData();
+          return;
+        }
+      }
       
       const bpkad = agendas.filter((item: any) => item.type === 'BPKAD')
       const pemkot = agendas.filter((item: any) => item.type === 'PEMKOT')

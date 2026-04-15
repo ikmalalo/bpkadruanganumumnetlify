@@ -11,6 +11,7 @@ import { id } from "date-fns/locale"
 import { ArrowLeft } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "../lib/supabaseClient"
+import { runAutoClean } from "../lib/autoClean"
 
 interface AgendaItem {
   id: number
@@ -86,6 +87,14 @@ export default function PreviewHorizontal() {
         .select('*')
 
       if (agendaError) throw agendaError
+
+      if (agendas) {
+        const modified = await runAutoClean(agendas);
+        if (modified) {
+          fetchData();
+          return;
+        }
+      }
 
       const { data: certs, error: certError } = await supabase
         .from('sertifikat')

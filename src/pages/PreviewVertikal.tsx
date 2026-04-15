@@ -16,6 +16,7 @@ import { id } from "date-fns/locale"
 import { ArrowLeft, ChevronLeft, ChevronRight, Video, Loader2, Download } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "../lib/supabaseClient"
+import { runAutoClean } from "../lib/autoClean"
 
 interface AgendaItem {
   id: number
@@ -100,6 +101,15 @@ export default function PreviewVertikal() {
         .select('*')
 
       if (error) throw error
+
+      if (data) {
+        const modified = await runAutoClean(data);
+        if (modified) {
+          fetchData();
+          return;
+        }
+      }
+
       setAllAgendas(data || [])
       setLoading(false)
     } catch (error) {
