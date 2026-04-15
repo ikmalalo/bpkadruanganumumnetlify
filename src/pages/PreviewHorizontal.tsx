@@ -293,19 +293,19 @@ export default function PreviewHorizontal() {
                     className="hover:bg-orange-50/40 transition-all duration-300 flex w-full min-h-[80px] items-stretch animate-slide-right opacity-0"
                     style={{ animationDelay: `${0.1 + idx * 0.15}s` }}
                   >
-                    <td className="px-2 text-[10px] md:text-sm font-medium text-gray-500 text-center w-[5%] min-w-[40px] hidden md:flex items-center justify-center">
+                    <td className="px-2 text-[10px] md:text-sm font-bold text-gray-500 text-center w-[5%] min-w-[40px] hidden md:flex items-center justify-center">
                       {currentSlide.type === 'AGENDA' ? currentSlide.startIndex + idx + 1 : idx + 1}
                     </td>
                     <td className="px-4 w-[15%] min-w-[100px] flex flex-col justify-center min-w-0">
                       <span className="text-[9px] md:text-[11px] font-bold text-gray-800 uppercase leading-none mb-1">{item.hari}</span>
-                      <span className="text-[8px] md:text-[9px] font-medium text-gray-400 uppercase tracking-wider">{item.tanggal.split(', ')[1] || item.tanggal}</span>
+                      <span className="text-[8px] md:text-[9px] font-bold text-gray-400 uppercase tracking-wider">{item.tanggal.split(', ')[1] || item.tanggal}</span>
                     </td>
-                    <td className="px-4 flex-1 min-w-[120px] flex items-center font-medium text-[9px] md:text-[11px] lg:text-[12px] text-gray-800 uppercase leading-tight">{item.tempat}</td>
-                    <td className="px-4 w-[10%] min-w-[90px] flex items-center justify-center"><span className="text-[9px] md:text-[11px] lg:text-[12px] font-semibold text-orange-500 bg-orange-50 px-1.5 md:px-2.5 py-1 rounded-md whitespace-nowrap">{item.pukul}</span></td>
-                    <td className="px-6 flex-[2] min-w-[200px] flex items-center font-medium text-[9px] md:text-[11px] lg:text-[12px] text-gray-800 uppercase leading-tight">{item.acara}</td>
-                    <td className="px-4 w-[12%] min-w-[100px] hidden lg:flex items-center font-medium text-[10px] md:text-[11px] text-gray-800 uppercase">{item.pelaksana}</td>
+                    <td className="px-4 flex-1 min-w-[120px] flex items-center font-bold text-[9px] md:text-[11px] lg:text-[12px] text-gray-800 uppercase leading-tight">{item.tempat}</td>
+                    <td className="px-4 w-[10%] min-w-[90px] flex items-center justify-center"><span className="text-[9px] md:text-[11px] lg:text-[12px] font-bold text-orange-500 bg-orange-50 px-1.5 md:px-2.5 py-1 rounded-md whitespace-nowrap">{item.pukul}</span></td>
+                    <td className="px-6 flex-[2] min-w-[200px] flex items-center font-bold text-[9px] md:text-[11px] lg:text-[12px] text-gray-800 uppercase leading-tight">{item.acara}</td>
+                    <td className="px-4 w-[12%] min-w-[100px] hidden lg:flex items-center font-bold text-[10px] md:text-[11px] text-gray-800 uppercase">{item.pelaksana}</td>
                     {item.type === 'PEMKOT' && (
-                      <td className="px-4 w-[15%] min-w-[100px] hidden lg:flex items-center font-medium text-[10px] md:text-[11px] text-gray-800 uppercase">{item.dihadiri || '-'}</td>
+                      <td className="px-4 w-[15%] min-w-[100px] hidden lg:flex items-center font-bold text-[10px] md:text-[11px] text-gray-800 uppercase">{item.dihadiri || '-'}</td>
                     )}
                     <td className="px-2 md:px-4 w-[15%] min-w-[80px] flex items-center justify-center">
                       <span className={`inline-flex items-center justify-center py-1 md:py-1.5 px-4 rounded-lg md:rounded-xl text-[9px] md:text-[11px] font-bold text-white min-w-[85px] transition-all duration-300 ${item.status === 'Berlangsung' ? 'bg-[#10b981] animate-glow-green' : 'bg-[#3b82f6] animate-glow-blue'}`}>{item.status}</span>
