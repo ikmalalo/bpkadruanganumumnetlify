@@ -241,15 +241,16 @@ export default function PreviewVertikal() {
       const canvas = recordingCanvasRef.current;
       if (!canvas) return;
       
-      const width = 540;
-      const height = 960;
+      const scale = 2; // Increase scale for 1080x1920 Full HD Output
+      const width = 540 * scale;
+      const height = 960 * scale;
       canvas.width = width;
       canvas.height = height;
       
       const stream = canvas.captureStream(30); 
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'video/webm;codecs=vp9',
-        videoBitsPerSecond: 8000000 
+        videoBitsPerSecond: 15000000 
       });
 
       const chunks: Blob[] = [];
@@ -300,7 +301,7 @@ export default function PreviewVertikal() {
         const cap = await toCanvas(contentRef.current as HTMLDivElement, {
             width: 540,
             height: 960,
-            pixelRatio: 1.3,
+            pixelRatio: scale, // Apply scale here
             skipFonts: false
         });
         slideSnapshots.push(cap);
@@ -318,13 +319,13 @@ export default function PreviewVertikal() {
             setProgress(currentProgress);
             
             ctx.fillStyle = "#ffffff";
-            ctx.fillRect(0, 0, 540, 960);
-            ctx.drawImage(slideSnapshot, 0, 0, 540, 960);
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(slideSnapshot, 0, 0, width, height);
             
             // Gambar Bar Orange (Mulai dari barRect.left yang presisi)
             ctx.fillStyle = "#f97316";
             ctx.beginPath();
-            ctx.roundRect(barRect.left, barRect.top, barRect.width * (currentProgress / 100), barRect.height, 999);
+            ctx.roundRect(barRect.left * scale, barRect.top * scale, barRect.width * (currentProgress / 100) * scale, barRect.height * scale, 999);
             ctx.fill();
             
             await new Promise(r => setTimeout(r, 1000 / fps)); 
