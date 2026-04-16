@@ -203,17 +203,15 @@ const applyStatusChange=async ()=>{
     if (error) throw error;
 
     if(type==="bpkad"){
-      let newData=[...bpkadData]
-      let newTemp=[...tempStatus]
-      newData[index].status=status; 
-      newTemp[index]=status;
-      setBpkadData(newData); setTempStatus(newTemp);
+      let newData = status === "Selesai" 
+        ? bpkadData.filter((_, i) => i !== index)
+        : bpkadData.map((item, i) => i === index ? { ...item, status } : item);
+      setBpkadData(newData);
     } else {
-      let newData=[...pemkotData]
-      let newTemp=[...tempPemkotStatus]
-      newData[index].status=status; 
-      newTemp[index]=status;
-      setPemkotData(newData); setTempPemkotStatus(newTemp);
+      let newData = status === "Selesai" 
+        ? pemkotData.filter((_, i) => i !== index)
+        : pemkotData.map((item, i) => i === index ? { ...item, status } : item);
+      setPemkotData(newData);
     }
 
     setToast({

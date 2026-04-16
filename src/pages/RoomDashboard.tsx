@@ -38,8 +38,8 @@ export default function RoomDashboard() {
         }
       }
       
-      const bpkad = agendas.filter((item: any) => item.type === 'BPKAD')
-      const pemkot = agendas.filter((item: any) => item.type === 'PEMKOT')
+      const bpkad = agendas.filter((item: any) => item.type === 'BPKAD' && item.status !== 'Selesai')
+      const pemkot = agendas.filter((item: any) => item.type === 'PEMKOT' && item.status !== 'Selesai')
       
       setBpkadData(bpkad)
       setPemkotData(pemkot)

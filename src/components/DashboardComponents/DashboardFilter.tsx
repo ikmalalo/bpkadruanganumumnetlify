@@ -72,7 +72,7 @@ export default function DashboardFilter({
                 : "opacity-0 scale-y-95 -translate-y-2 pointer-events-none"}
               `}
             >
-              {["Semua", "Berlangsung", "Terjadwal", "Selesai"].map((opt) => (
+              {["Semua", "Berlangsung", "Terjadwal"].map((opt) => (
                 <div 
                   key={opt}
                   onClick={()=>{setStatusFilter(opt);setStatusText(`Status: ${opt}`);setOpenFilter(null)}} 

@@ -313,8 +313,6 @@ export default function PreviewVertikal() {
       for (let i = 0; i < totalSlides; i++) {
         const slideSnapshot = slideSnapshots[i];
         const barRect = barRects[i];
-        const prevSlideSnapshot = i > 0 ? slideSnapshots[i - 1] : null;
-        const transitionFrames = 15; // 0.5 detik transisi pada 30fps
 
         for (let frame = 0; frame < framesPerSlide; frame++) {
             const currentProgress = (frame / framesPerSlide) * 100;
@@ -322,18 +320,7 @@ export default function PreviewVertikal() {
             
             ctx.fillStyle = "#ffffff";
             ctx.fillRect(0, 0, width, height);
-            
-            if (prevSlideSnapshot && frame < transitionFrames) {
-                // Efek geser dari kanan ke kiri
-                const progress = frame / transitionFrames;
-                const easeOut = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
-                const offsetX = width * easeOut;
-                
-                ctx.drawImage(prevSlideSnapshot, -offsetX, 0, width, height);
-                ctx.drawImage(slideSnapshot, width - offsetX, 0, width, height);
-            } else {
-                ctx.drawImage(slideSnapshot, 0, 0, width, height);
-            }
+            ctx.drawImage(slideSnapshot, 0, 0, width, height);
             
             // Gambar Bar Orange (Mulai dari barRect.left yang presisi)
             ctx.fillStyle = "#f97316";
@@ -479,17 +466,15 @@ export default function PreviewVertikal() {
         <div className="flex-1 p-3 md:p-4 flex flex-col w-full mx-auto overflow-hidden">
           <div className="flex flex-col items-center mb-3 text-center">
             <img src={logo} alt="Logo" className="h-10 mb-2 object-contain" />
-            {!isRecording && !isPuppet && (
-              <div className="flex flex-col items-center">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl md:text-3xl font-black text-gray-800">{format(time, "HH:mm")}</span>
-                  <span className="text-base md:text-lg font-bold text-orange-500">WITA</span>
-                </div>
-                <span className={`${isPuppet ? 'text-sm md:text-base mt-1' : 'text-xs md:text-sm mt-1'} font-bold text-orange-500 uppercase tracking-widest leading-none`}>
-                  {format(time, "EEEE, dd MMMM yyyy", { locale: id })}
-                </span>
+            <div className="flex flex-col items-center">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl md:text-3xl font-black text-gray-800">{format(time, "HH:mm")}</span>
+                <span className="text-base md:text-lg font-bold text-orange-500">WITA</span>
               </div>
-            )}
+              <span className={`${isPuppet ? 'text-sm md:text-base mt-1' : 'text-xs md:text-sm mt-1'} font-bold text-orange-500 uppercase tracking-widest leading-none`}>
+                {format(time, "EEEE, dd MMMM yyyy", { locale: id })}
+              </span>
+            </div>
           </div>
 
           <div className="w-full h-1.5 rounded-full overflow-hidden flex mb-3 shadow-inner bg-gray-200">
