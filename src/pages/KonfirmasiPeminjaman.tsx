@@ -35,11 +35,11 @@ export default function KonfirmasiPeminjaman() {
   }
 
   const timeToMin = (t: string, referenceStart: number | null = null) => {
-    if (!t) return referenceStart !== null ? referenceStart + 300 : 0;
+    if (!t) return referenceStart !== null ? referenceStart + 180 : 0;
     const clean = t.toString().trim().toLowerCase().replace('.', ':');
-    if (clean.includes('selesai')) return referenceStart !== null ? referenceStart + 300 : 1439;
+    if (clean.includes('selesai')) return referenceStart !== null ? referenceStart + 180 : 1439;
     const match = clean.match(/(\d{1,2}):(\d{1,2})/);
-    if (!match) return referenceStart !== null ? referenceStart + 300 : 0;
+    if (!match) return referenceStart !== null ? referenceStart + 180 : 0;
     const h = parseInt(match[1]) || 0;
     const m = parseInt(match[2]) || 0;
     return h * 60 + m;

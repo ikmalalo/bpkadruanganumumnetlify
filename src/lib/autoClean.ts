@@ -29,22 +29,18 @@ export const runAutoClean = async (agendas: any[]) => {
     const waktuMulaiStr = splitWaktu[0];
     const waktuSelesaiStr = splitWaktu[1] || "";
     
-    // Set expiry object initially to dateObj
+    // Set start and expiry objects
+    const startDate = new Date(dateObj);
     const expiryDate = new Date(dateObj);
 
+    const matchStart = waktuMulaiStr.match(/(\d{1,2})[:.](\d{1,2})/);
+    if (!matchStart) continue;
+    startDate.setHours(parseInt(matchStart[1]), parseInt(matchStart[2]), 0, 0);
+
     if (waktuSelesaiStr.toLowerCase() === "selesai") {
-      // Dynamic length since it's "Sampai Selesai"
-      const matchStart = waktuMulaiStr.match(/(\d{1,2})[:.](\d{1,2})/);
-      if (!matchStart) continue;
+      // Dynamic length since it's "Sampai Selesai" (limit 3h for both)
       expiryDate.setHours(parseInt(matchStart[1]), parseInt(matchStart[2]), 0, 0);
-      
-      // limit BPKAD = +3h, PEMKOT = +6h
-      if (agenda.type === "BPKAD") {
-        expiryDate.setHours(expiryDate.getHours() + 3);
-      } else {
-        // PEMKOT
-        expiryDate.setHours(expiryDate.getHours() + 6);
-      }
+      expiryDate.setHours(expiryDate.getHours() + 3);
     } else {
       // Fixed end time (e.g. "10:00")
       const matchEnd = waktuSelesaiStr.match(/(\d{1,2})[:.](\d{1,2})/);
@@ -59,6 +55,12 @@ export const runAutoClean = async (agendas: any[]) => {
         modified = true;
       } else if (agenda.type === "PEMKOT") {
         await supabase.from('agenda_ruangan').delete().eq('id', agenda.id);
+        modified = true;
+      }
+    } else if (now.getTime() >= startDate.getTime()) {
+      // Meeting has started but not yet expired
+      if (agenda.status === "Terjadwal") {
+        await supabase.from('agenda_ruangan').update({ status: 'Berlangsung' }).eq('id', agenda.id);
         modified = true;
       }
     }
