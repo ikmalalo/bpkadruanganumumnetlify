@@ -1,4 +1,4 @@
-import { LayoutDashboard, PlusCircle, History, LogOut, Eye, X, Award } from "lucide-react"
+import { LayoutDashboard, PlusCircle, History, LogOut, Eye, X, Award, Users, CircleDollarSign } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useEffect, useRef } from "react"
 
@@ -7,12 +7,18 @@ interface SidebarProps {
   onClose: () => void
 }
 
-const menuItems = [
+const roomBookingMenu = [
   { path: "/rooms",      icon: LayoutDashboard, label: "Dashboard" },
   { path: "/peminjaman", icon: PlusCircle,       label: "Buat Peminjaman" },
   { path: "/preview",    icon: Eye,              label: "Preview Ruangan" },
   { path: "/riwayat",          icon: History,          label: "Riwayat" },
   { path: "/upload-sertifikat", icon: Award,            label: "Upload Sertifikat" },
+]
+
+const kgbMenu = [
+  { path: "/kgb",            icon: LayoutDashboard, label: "Dashboard" },
+  { path: "/kgb/pegawai",    icon: Users,           label: "Daftar Pegawai" },
+  { path: "/kgb/riwayat",    icon: CircleDollarSign, label: "Riwayat Penggajian" },
 ]
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
@@ -36,8 +42,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     navigate("/")
   }
 
+  const isKgb = location.pathname.startsWith('/kgb')
+  const currentMenu = isKgb ? kgbMenu : roomBookingMenu
+
   useEffect(() => {
-    const index = menuItems.findIndex((item: any) => item.path === location.pathname)
+    const index = currentMenu.findIndex((item: any) => item.path === location.pathname)
     if (index === -1) return
 
     const el = menuRefs.current[index]
@@ -120,7 +129,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           }}
         />
 
-        {menuItems.map((item: any, index: number) => {
+        {currentMenu.map((item: any, index: number) => {
           const isActive = location.pathname === item.path
           const Icon = item.icon
           return (
@@ -134,7 +143,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               className={`
                 relative flex items-center gap-3 p-3 rounded-lg cursor-pointer z-10
                 transition-colors duration-200
-                ${isActive ? "text-orange-600 font-medium" : "text-gray-600 hover:text-gray-800"}
+                ${isActive 
+                  ? "text-orange-600 font-medium" 
+                  : "text-gray-600 hover:text-gray-800"}
               `}
             >
               <Icon size={18} />

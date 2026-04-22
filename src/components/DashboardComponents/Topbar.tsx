@@ -12,6 +12,9 @@ const routeTitles: { [key: string]: string } = {
   "/preview": "Preview Ruangan",
   "/riwayat": "Riwayat Peminjaman",
   "/konfirmasipeminjaman": "Konfirmasi Peminjaman",
+  "/kgb": "Dashboard",
+  "/kgb/pegawai": "Daftar Pegawai",
+  "/kgb/riwayat": "Riwayat Gaji",
 }
 
 export default function Topbar({ onMenuClick }: TopbarProps) {

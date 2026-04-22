@@ -10,6 +10,9 @@ import PreviewHorizontal from "./pages/PreviewHorizontal"
 import PreviewVertikal from "./pages/PreviewVertikal"
 import Riwayat from "./pages/Riwayat"
 import UploadSertifikat from "./pages/UploadSertifikat"
+import KGBDashboard from "./pages/KGB/KGBDashboard"
+import KGBEmployeeList from "./pages/KGB/KGBEmployeeList"
+import KGBHistory from "./pages/KGB/KGBHistory"
 import LoadingScreen from "./components/LoadingScreen"
 import DashboardLayout from "./components/DashboardComponents/DashboardLayout"
 import ProtectedRoute from "./components/Common/ProtectedRoute"
@@ -62,6 +65,11 @@ export default function App() {
           <Route path="/riwayat" element={<Riwayat />} />
           <Route path="/upload-sertifikat" element={<UploadSertifikat />} />
           <Route path="/konfirmasipeminjaman" element={<KonfirmasiPeminjaman />} />
+
+          {/* KGB Dashboard */}
+          <Route path="/kgb" element={<KGBDashboard />} />
+          <Route path="/kgb/pegawai" element={<KGBEmployeeList />} />
+          <Route path="/kgb/riwayat" element={<KGBHistory />} />
         </Route>
       </Route>
 

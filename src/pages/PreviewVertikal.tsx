@@ -411,7 +411,7 @@ export default function PreviewVertikal() {
       <div 
         ref={contentRef}
         className={`relative z-10 h-full flex flex-col bg-white overflow-hidden ${isRecording ? 'fixed top-0 left-0 w-[540px] h-[960px] z-[160] shadow-2xl' : ''}`}
-        style={isRecording ? { fontFamily: "'Poppins', sans-serif" } : {}}
+        style={isRecording ? { fontFamily: "'Inter', sans-serif" } : {}}
       >
         {/* Recording Style Injection */}
         {isRecording && (

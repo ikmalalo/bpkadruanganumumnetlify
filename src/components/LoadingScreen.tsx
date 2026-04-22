@@ -62,7 +62,7 @@ const LoadingScreen: React.FC = () => {
     }, [vantaEffect]);
 
     return (
-        <div ref={vantaRef} className="fixed inset-0 z-[9999] flex flex-col items-center justify-center font-poppins select-none">
+        <div ref={vantaRef} className="fixed inset-0 z-[9999] flex flex-col items-center justify-center select-none">
             {/* Top Information */}
             <div className="absolute top-8 left-8 flex flex-col gap-1">
                 <span className="text-[12px] font-semibold text-gray-600">BPKAD Kota Samarinda</span>
