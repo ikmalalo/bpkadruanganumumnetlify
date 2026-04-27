@@ -103,16 +103,27 @@ export default function RoomDashboard() {
     setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
   };
 
-  const totalBpkad = bpkadData.length
-  const totalPemkot = pemkotData.length
+  // Dynamic stats based on filters
+  const getFilteredData = (data: any[]) => {
+    let filtered = [...data]
+    if (statusFilter !== "Semua") filtered = filtered.filter(d => d.status === statusFilter)
+    if (tempatFilter !== "Semua") filtered = filtered.filter(d => d.tempat.includes(tempatFilter))
+    return filtered
+  }
+
+  const filteredBpkad = getFilteredData(bpkadData)
+  const filteredPemkot = getFilteredData(pemkotData)
+
+  const totalBpkad = filteredBpkad.length
+  const totalPemkot = filteredPemkot.length
 
   const sedangDigunakan =
-    bpkadData.filter(d => d.status === "Berlangsung").length +
-    pemkotData.filter(d => d.status === "Berlangsung").length
+    filteredBpkad.filter(d => d.status === "Berlangsung").length +
+    filteredPemkot.filter(d => d.status === "Berlangsung").length
 
   const terjadwal =
-    bpkadData.filter(d => d.status === "Terjadwal").length +
-    pemkotData.filter(d => d.status === "Terjadwal").length
+    filteredBpkad.filter(d => d.status === "Terjadwal").length +
+    filteredPemkot.filter(d => d.status === "Terjadwal").length
 
   return (
     <div className="flex flex-col relative">

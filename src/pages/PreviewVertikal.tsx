@@ -417,6 +417,7 @@ export default function PreviewVertikal() {
         {isRecording && (
           <style>{`
             #btn-record-portrait, .fixed.top-0.left-0.w-20 { display: none !important; }
+            .header-time-date { display: none !important; }
             .flex.items-baseline.gap-1.5 { gap: 10px !important; }
             .text-2xl.md\\:text-3xl { font-size: 40px !important; line-height: 1 !important; }
             .text-base.md\\:text-lg { font-size: 20px !important; line-height: 1 !important; }
@@ -466,7 +467,7 @@ export default function PreviewVertikal() {
         <div className="flex-1 p-3 md:p-4 flex flex-col w-full mx-auto overflow-hidden">
           <div className="flex flex-col items-center mb-3 text-center">
             <img src={logo} alt="Logo" className="h-10 mb-2 object-contain" />
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center header-time-date">
               <div className="flex items-baseline gap-1.5">
                 <span className="text-2xl md:text-3xl font-black text-gray-800">{format(time, "HH:mm")}</span>
                 <span className="text-base md:text-lg font-bold text-orange-500">WITA</span>
