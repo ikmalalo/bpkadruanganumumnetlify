@@ -124,7 +124,7 @@ export default function PreviewVertikal() {
     return () => clearInterval(refreshInterval)
   }, [])
 
-  const itemsPerPageCount = 2
+  const itemsPerPageCount = 3
   const SLIDE_DURATION = 20000
 
   const pages = useMemo(() => {
