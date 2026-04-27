@@ -505,9 +505,16 @@ export default function PreviewVertikal() {
                     className="bg-white/50 rounded-2xl shadow-[0_8px_32px_rgba(251,146,60,0.1)] border border-orange-500/30 overflow-hidden flex flex-col relative translate-y-0 hover:-translate-y-1 transition-transform animate-slide-right opacity-0"
                     style={{ animationDelay: `${0.1 + idx * 0.2}s` }}
                   >
-                    <div className={`absolute top-3 right-3 px-3 py-1 text-[10px] rounded-full font-black text-white shadow-md z-10 transition-all duration-300 ${item.status === "Berlangsung" ? "bg-[#10b981] animate-glow-green" : "bg-[#3b82f6] animate-glow-blue"}`}>
-                      {item.status}
-                    </div>
+                    {/* Force status to "Terjadwal" during recording */}
+                    {(() => {
+                      const displayStatus = isRecording ? "Terjadwal" : item.status;
+                      const statusColor = displayStatus === "Berlangsung" ? "bg-[#10b981] animate-glow-green" : "bg-[#3b82f6] animate-glow-blue";
+                      return (
+                        <div className={`absolute top-3 right-3 px-3 py-1 text-[10px] rounded-full font-black text-white shadow-md z-10 transition-all duration-300 ${statusColor}`}>
+                          {displayStatus}
+                        </div>
+                      );
+                    })()}
                     <div className={`bg-white/10 ${isPuppet ? 'p-2.5 gap-2.5' : 'p-3 gap-3'} border-b border-white/10 flex items-center`}>
                       <div className={`${isPuppet ? 'w-7 h-7 text-sm' : 'w-8 h-8 text-base'} rounded-xl bg-orange-500 flex items-center justify-center text-white font-black shadow-orange-200 shadow-lg`}>
                         {currentSlide.type === 'AGENDA' ? currentSlide.startIndex + idx + 1 : idx + 1}
