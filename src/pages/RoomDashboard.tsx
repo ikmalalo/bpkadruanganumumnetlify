@@ -4,8 +4,9 @@ import BookingTable from "../components/DashboardComponents/BookingTable"
 import DashboardFilter from "../components/DashboardComponents/DashboardFilter"
 import CertificateTable from "../components/DashboardComponents/CertificateTable"
 import Toast from "../components/DashboardComponents/Toast"
+import ConfirmPopup from "../components/Common/ConfirmPopup"
 import "../index.css"
-import { supabase } from "../lib/supabaseClient"
+import { api } from "../lib/api"
 import { runAutoClean } from "../lib/autoClean"
 
 export default function RoomDashboard() {
@@ -19,16 +20,24 @@ export default function RoomDashboard() {
   const [certificates, setCertificates] = useState<any[]>([])
   const [selectedAgenda, setSelectedAgenda] = useState<any | null>(null)
   const [toast, setToast] = useState({ show: false, message: "", type: 'success' as 'success' | 'error' })
+  const [confirmPopup, setConfirmPopup] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    variant: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    variant: 'danger'
+  })
 
   const fetchData = async () => {
     try {
       // Fetch Agendas
-      const { data: agendas, error: agendaError } = await supabase
-        .from('agenda_ruangan')
-        .select('*')
-        .order('id', { ascending: true })
-
-      if (agendaError) throw agendaError
+      const agendas = await api.getAgendas();
 
       if (agendas) {
         const modified = await runAutoClean(agendas);
@@ -44,63 +53,61 @@ export default function RoomDashboard() {
       setBpkadData(bpkad)
       setPemkotData(pemkot)
 
-      // Fetch Certificates (Sertifikat)
-      const { data: certs, error: certError } = await supabase
-        .from('sertifikat')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (certError) throw certError
-      setCertificates(certs)
+      // Fetch Information (Informasi)
+      const infos = await api.getInformasi();
+      setCertificates(infos)
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
     }
   }
 
   useEffect(() => {
+    document.title = "Dashboard Ruangan | BPKAD"
     fetchData()
   }, [])
 
-  const handleDeleteCertificate = async (id: number) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus sertifikat ini?")) return;
-    
-    try {
-      const { error } = await supabase
-        .from('sertifikat')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
-
-      setCertificates(prev => prev.filter(c => c.id !== id));
-      setToast({ show: true, message: "Sertifikat berhasil dihapus", type: 'success' });
-    } catch (error) {
-      console.error('Error deleting certificate:', error);
-      setToast({ show: true, message: "Terjadi kesalahan saat menghapus sertifikat", type: 'error' });
-    }
-    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+  const handleDeleteInformasi = (id: number) => {
+    setConfirmPopup({
+      isOpen: true,
+      title: "Hapus Informasi",
+      message: "Apakah Anda yakin ingin menghapus informasi ini?",
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await api.deleteInformasi(id);
+          setCertificates(prev => prev.filter(c => c.id !== id));
+          setToast({ show: true, message: "Informasi berhasil dihapus", type: 'success' });
+        } catch (error) {
+          console.error('Error deleting information:', error);
+          setToast({ show: true, message: "Terjadi kesalahan saat menghapus informasi", type: 'error' });
+        }
+        setConfirmPopup(prev => ({ ...prev, isOpen: false }));
+        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+      }
+    });
   };
 
-  const handleDeleteAgenda = async (id: number) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus ruangan ini secara permanen?")) return;
-    
-    try {
-      const { error } = await supabase
-        .from('agenda_ruangan')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
-
-      setBpkadData(prev => prev.filter(c => c.id !== id));
-      setPemkotData(prev => prev.filter(c => c.id !== id));
-      setSelectedAgenda(null);
-      setToast({ show: true, message: "Peminjaman ruangan berhasil dihapus permanen", type: 'success' });
-    } catch (error) {
-      console.error('Error deleting agenda:', error);
-      setToast({ show: true, message: "Terjadi kesalahan saat menghapus peminjaman", type: 'error' });
-    }
-    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+  const handleDeleteAgenda = (id: number) => {
+    setConfirmPopup({
+      isOpen: true,
+      title: "Hapus Peminjaman",
+      message: "Apakah Anda yakin ingin menghapus ruangan ini secara permanen?",
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await api.deleteAgenda(id);
+          setBpkadData(prev => prev.filter(c => c.id !== id));
+          setPemkotData(prev => prev.filter(c => c.id !== id));
+          setSelectedAgenda(null);
+          setToast({ show: true, message: "Peminjaman ruangan berhasil dihapus permanen", type: 'success' });
+        } catch (error) {
+          console.error('Error deleting agenda:', error);
+          setToast({ show: true, message: "Terjadi kesalahan saat menghapus peminjaman", type: 'error' });
+        }
+        setConfirmPopup(prev => ({ ...prev, isOpen: false }));
+        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+      }
+    });
   };
 
   // Dynamic stats based on filters
@@ -142,7 +149,7 @@ export default function RoomDashboard() {
 
         <StatCard
           number={certificates.length.toString()}
-          label="TOTAL SERTIFIKAT"
+          label="TOTAL INFORMASI"
           color="border-yellow-500 text-yellow-500"
         />
 
@@ -181,10 +188,19 @@ export default function RoomDashboard() {
 
       <CertificateTable 
         certificates={certificates}
-        onDelete={handleDeleteCertificate}
+        onDelete={handleDeleteInformasi}
       />
       
       <Toast show={toast.show} message={toast.message} type={toast.type} />
+
+      <ConfirmPopup
+        isOpen={confirmPopup.isOpen}
+        title={confirmPopup.title}
+        message={confirmPopup.message}
+        variant={confirmPopup.variant}
+        onConfirm={confirmPopup.onConfirm}
+        onCancel={() => setConfirmPopup(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }

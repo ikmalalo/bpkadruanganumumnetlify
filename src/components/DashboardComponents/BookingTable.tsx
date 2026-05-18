@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { ChevronLeft, ChevronRight, Check, Calendar, MapPin, Clock, User, Users } from "lucide-react"
 import ConfirmModal from "./ConfirmModal"
 import Toast from "./Toast"
-import { supabase } from "../../lib/supabaseClient"
+import { api } from "../../lib/api"
 
 interface Props {
 statusFilter:string
@@ -195,12 +195,7 @@ const applyStatusChange=async ()=>{
   const targetData = type === "bpkad" ? bpkadData[index] : pemkotData[index];
 
   try {
-    const { error } = await supabase
-      .from('agenda_ruangan')
-      .update({ status })
-      .eq('id', targetData.id);
-
-    if (error) throw error;
+    const result = await api.saveAgenda({ ...targetData, status });
 
     if(type==="bpkad"){
       let newData = status === "Selesai" 
@@ -349,7 +344,7 @@ return (
     <section>
       <h3 className="text-lg font-bold mb-4 text-gray-700 uppercase tracking-tight flex items-center gap-2">
         <div className="w-1.5 h-6 bg-indigo-600 rounded-full"></div>
-        Agenda Rapat Pemkot Samarinda
+        Agenda Pemkot Samarinda
       </h3>
 
       {/* Mobile Component */}

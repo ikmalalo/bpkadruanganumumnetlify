@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { ArrowLeft } from "lucide-react"
 import LoginForm from "../components/LoginComponents/LoginForm"
@@ -6,6 +7,10 @@ import "../index.css"
 
 export default function LoginPage() {
   const navigate = useNavigate()
+
+  useEffect(() => {
+    document.title = "Login | BPKAD - Sistem Manajemen"
+  }, [])
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-white relative">

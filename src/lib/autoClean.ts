@@ -1,4 +1,4 @@
-import { supabase } from "./supabaseClient"
+import { api } from "./api";
 
 const monthMap: { [key: string]: number } = {
   'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'Mei': 4, 'Jun': 5,
@@ -51,16 +51,16 @@ export const runAutoClean = async (agendas: any[]) => {
     if (now.getTime() >= expiryDate.getTime()) {
       // It has expired based on rules!
       if (agenda.type === "BPKAD") {
-        await supabase.from('agenda_ruangan').update({ status: 'Selesai' }).eq('id', agenda.id);
+        await api.saveAgenda({ ...agenda, status: 'Selesai' });
         modified = true;
       } else if (agenda.type === "PEMKOT") {
-        await supabase.from('agenda_ruangan').delete().eq('id', agenda.id);
+        await api.deleteAgenda(agenda.id);
         modified = true;
       }
     } else if (now.getTime() >= startDate.getTime()) {
       // Meeting has started but not yet expired
       if (agenda.status === "Terjadwal") {
-        await supabase.from('agenda_ruangan').update({ status: 'Berlangsung' }).eq('id', agenda.id);
+        await api.saveAgenda({ ...agenda, status: 'Berlangsung' });
         modified = true;
       }
     }

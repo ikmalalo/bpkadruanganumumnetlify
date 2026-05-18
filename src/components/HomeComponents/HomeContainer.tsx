@@ -19,6 +19,7 @@ export default function HomeContainer() {
           buttonText="Mulai Akses"
           buttonIcon={ArrowRight}
           onClick={() => {
+            localStorage.clear()
             sessionStorage.setItem('isVisitor', 'true')
             navigate("/preview")
           }}

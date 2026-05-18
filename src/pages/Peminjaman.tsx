@@ -43,6 +43,7 @@ const ruangBpkad = [
   "Ruang Rapat Mahakam (Lt 4)",
   "Ruang Rapat Sekretariat TAPD (Lt 4)",
   "Ruang Rapat Nusantara (Lt 3)",
+  "Ruang Rapat Batik (Lt 1)",
 ]
 
 export default function Peminjaman() {
@@ -54,16 +55,30 @@ export default function Peminjaman() {
     jenisRuangan: editData?.type?.toLowerCase() || "bpkad",
     ruangan: editData?.tempat || "",
     tanggal: editData?.tanggal || "",
-    waktuMulai: editData?.pukul?.split(' - ')[0] || "",
-    waktuSelesai: editData?.pukul?.split(' - ')[1] || "",
+    waktuMulai: editData?.pukul?.includes(' - ') ? editData.pukul.split(' - ')[0] : (editData?.pukul || ""),
+    waktuSelesai: editData?.pukul?.includes(' - ') ? editData.pukul.split(' - ')[1] : "",
     namaAcara: editData?.acara || "",
     pelaksana: editData?.pelaksana || "",
     dihadiri: editData?.dihadiri || "",
   })
 
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
-    editData?.tanggal ? new Date(editData.tanggal) : undefined
-  )
+  // Safely parse date from string
+  const getInitialDate = () => {
+    if (!editData?.tanggal) return undefined;
+    const d = new Date(editData.tanggal);
+    return isNaN(d.getTime()) ? undefined : d;
+  };
+
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(getInitialDate())
+
+  const safeFormatDate = (date: Date | undefined) => {
+    if (!date || isNaN(date.getTime())) return "Pilih tanggal";
+    try {
+      return format(date, "dd MMMM yyyy", { locale: id });
+    } catch (e) {
+      return "Pilih tanggal";
+    }
+  }
 
   const [openDropdown, setOpenDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -179,9 +194,7 @@ export default function Peminjaman() {
                 className="w-full h-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white hover:border-orange-400 transition min-h-[40px]"
               >
                 <span>
-                  {selectedDate
-                    ? format(selectedDate, "dd MMMM yyyy", { locale: id })
-                    : "Pilih tanggal"}
+                  {safeFormatDate(selectedDate)}
                 </span>
                 <Calendar size={18} />
               </button>

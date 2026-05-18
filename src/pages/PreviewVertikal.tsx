@@ -15,8 +15,9 @@ import { format } from "date-fns"
 import { id } from "date-fns/locale"
 import { ArrowLeft, ChevronLeft, ChevronRight, Video, Loader2, Download } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import { supabase } from "../lib/supabaseClient"
 import { runAutoClean } from "../lib/autoClean"
+import { api } from "../lib/api"
+import Notification from "../components/Common/Notification"
 
 interface AgendaItem {
   id: number
@@ -44,6 +45,12 @@ export default function PreviewVertikal() {
   const [loading, setLoading] = useState(true)
   const [isRecording, setIsRecording] = useState(false)
   const [recordDone, setRecordDone] = useState(false)
+  const [notification, setNotification] = useState<{show: boolean, type: 'success' | 'error' | 'info', title: string, message: string}>({
+    show: false,
+    type: 'info',
+    title: '',
+    message: ''
+  })
 
   const vantaRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -96,22 +103,17 @@ export default function PreviewVertikal() {
 
   const fetchData = async () => {
     try {
-      const { data, error } = await supabase
-        .from('agenda_ruangan')
-        .select('*')
+      const data = await api.getAgendas();
 
-      if (error) throw error
-
-      if (data) {
+      if (Array.isArray(data)) {
         const modified = await runAutoClean(data);
         if (modified) {
           fetchData();
           return;
         }
+        setAllAgendas(data);
       }
-
-      setAllAgendas(data || [])
-      setLoading(false)
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching data:', error)
       setLoading(false)
@@ -124,7 +126,7 @@ export default function PreviewVertikal() {
     return () => clearInterval(refreshInterval)
   }, [])
 
-  const itemsPerPageCount = 3
+  const itemsPerPageCount = 2
   const SLIDE_DURATION = 20000
 
   const pages = useMemo(() => {
@@ -336,7 +338,12 @@ export default function PreviewVertikal() {
 
     } catch (err: any) {
       console.error("Recording failed", err);
-      alert("Perekaman gagal: " + err.message);
+      setNotification({
+        show: true,
+        type: 'error',
+        title: "Perekaman Gagal",
+        message: err.message
+      });
       setIsRecording(false);
     }
   }
@@ -434,8 +441,8 @@ export default function PreviewVertikal() {
           </div>
         )}
 
-        {/* Record button — hidden in puppet mode */}
-        {!isPuppet && (
+        {/* Record button — hidden in puppet mode and restricted to admins */}
+        {!isPuppet && !isVisitor && localStorage.getItem('user') && JSON.parse(localStorage.getItem('user') || '{}').role === 'admin' && (
           <div className="fixed top-3 right-3 z-50">
             <button
               id="btn-record-portrait"
@@ -588,6 +595,13 @@ export default function PreviewVertikal() {
           </div>
         ) : null}
       </div>
+      <Notification
+        show={notification.show}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+        onClose={() => setNotification(prev => ({ ...prev, show: false }))}
+      />
     </div>
   )
 }

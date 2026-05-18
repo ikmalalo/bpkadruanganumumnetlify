@@ -4,7 +4,7 @@ import LoginButton from "./LoginButton"
 import logo from "../../assets/images/logo.png"
 import { useNavigate } from "react-router-dom"
 import Notification from "../Common/Notification"
-import { supabase } from "../../lib/supabaseClient"
+import { api } from "../../lib/api"
 
 export default function LoginForm() {
   const navigate = useNavigate()
@@ -37,23 +37,10 @@ export default function LoginForm() {
 
     setLoading(true)
     try {
-      // Supabase Auth membutuhkan format Email.
-      const emailInput = username.trim().includes('@') ? username.trim() : `${username.trim()}@bpkad.com`
-      
-      console.log("Mencoba login ke Supabase dengan:", { email: emailInput, password: password });
+      const response = await api.login({ username, password });
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: emailInput,
-        password: password
-      })
-
-      if (error) {
-        console.error("Supabase Auth Error:", error);
-        throw error
-      }
-
-      if (data.user) {
-        localStorage.setItem('user', JSON.stringify(data.user))
+      if (response.success && response.user) {
+        localStorage.setItem('user', JSON.stringify(response.user))
         sessionStorage.removeItem('isVisitor')
         setNotification({
           show: true,
@@ -68,7 +55,7 @@ export default function LoginForm() {
         show: true,
         type: "error",
         title: "Login Gagal",
-        message: error.message || "Email atau password salah"
+        message: error.message || "Username atau password salah"
       })
       setPassword("")
     } finally {

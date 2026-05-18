@@ -3,7 +3,7 @@ import "../index.css"
 import { ArrowLeft, ArrowRight, FileText } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 import AppNotification from "../components/Common/Notification"
-import { supabase } from "../lib/supabaseClient"
+import { api } from "../lib/api"
 
 export default function KonfirmasiPeminjaman() {
   const navigate = useNavigate()
@@ -49,18 +49,13 @@ export default function KonfirmasiPeminjaman() {
     const sm = timeToMin(waktuMulai);
     const se = timeToMin(waktuSelesai, sm);
     
-    let query = supabase
-      .from('agenda_ruangan')
-      .select('id, pukul, acara')
-      .eq('tempat', ruangan.trim())
-      .eq('tanggal', tanggal.trim());
-    
-    if (excludeId) {
-      query = query.neq('id', excludeId);
-    }
-    
-    const { data: existing, error } = await query;
-    if (error) throw error;
+    // Fetch all agendas and filter locally to minimize API complexity for now
+    const agendas = await api.getAgendas();
+    const existing = agendas.filter((item: any) => 
+      item.tempat.trim() === ruangan.trim() && 
+      item.tanggal.trim() === tanggal.trim() &&
+      (!excludeId || item.id != excludeId)
+    );
     
     for (const row of existing) {
       const timeParts = row.pukul.split(/\s*[-–—]\s*/);
@@ -95,6 +90,7 @@ export default function KonfirmasiPeminjaman() {
       const pukul = `${data.waktuMulai} - ${data.waktuSelesai}`;
 
       const payload = {
+        id: agendaId,
         hari,
         tanggal: data.tanggal,
         tempat: data.ruangan,
@@ -106,19 +102,7 @@ export default function KonfirmasiPeminjaman() {
         status: isEdit ? (data as any).status || 'Terjadwal' : 'Terjadwal'
       };
 
-      let response;
-      if (isEdit) {
-        response = await supabase
-          .from('agenda_ruangan')
-          .update(payload)
-          .eq('id', agendaId);
-      } else {
-        response = await supabase
-          .from('agenda_ruangan')
-          .insert([payload]);
-      }
-
-      if (response.error) throw response.error;
+      await api.saveAgenda(payload);
 
       setNotification({
         show: true,

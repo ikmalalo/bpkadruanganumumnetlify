@@ -1,6 +1,9 @@
-import { LayoutDashboard, PlusCircle, History, LogOut, Eye, X, Award, Users, CircleDollarSign } from "lucide-react"
+import { LayoutDashboard, PlusCircle, History, LogOut, Eye, X, Award, Users, CircleDollarSign, ArrowLeftRight, FileText } from "lucide-react"
+
 import { useNavigate, useLocation } from "react-router-dom"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
+import { api } from "../../lib/api"
+import { isKGBDueSoon } from "../../lib/kgbUtils"
 
 interface SidebarProps {
   isOpen: boolean
@@ -12,7 +15,7 @@ const roomBookingMenu = [
   { path: "/peminjaman", icon: PlusCircle,       label: "Buat Peminjaman" },
   { path: "/preview",    icon: Eye,              label: "Preview Ruangan" },
   { path: "/riwayat",          icon: History,          label: "Riwayat" },
-  { path: "/upload-sertifikat", icon: Award,            label: "Upload Sertifikat" },
+  { path: "/upload-informasi", icon: FileText,            label: "Upload Informasi" },
 ]
 
 const kgbMenu = [
@@ -29,6 +32,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const highlightRef = useRef<HTMLDivElement>(null)
   const menuRefs = useRef<(HTMLDivElement | null)[]>([])
   const isFirstRef = useRef(true)
+  const [kgbAlertCount, setKgbAlertCount] = useState(0)
 
   // Get user from localStorage
   const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -75,6 +79,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       highlight.style.opacity = "1"
     }
   }, [location.pathname])
+
+  useEffect(() => {
+    if (isKgb) {
+      api.getKGBEmployees().then(data => {
+        const count = data.filter((emp: any) => isKGBDueSoon(emp.tahunAkhir)).length
+        setKgbAlertCount(count)
+      }).catch(err => console.error("Sidebar KGB count error:", err))
+    }
+  }, [isKgb, location.pathname]) // Refresh on path change to keep it updated
 
   return (
     <>
@@ -149,7 +162,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               `}
             >
               <Icon size={18} />
-              {item.label}
+              <span className="flex-grow">{item.label}</span>
+              {item.path === "/kgb" && kgbAlertCount > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                  {kgbAlertCount}
+                </span>
+              )}
             </div>
           )
         })}
@@ -157,7 +175,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       </nav>
 
       <div className="mt-auto pt-6">
-        <div className="border-t pt-4">
+        <div className="border-t pt-4 flex flex-col gap-1">
+          <div 
+            onClick={() => navigate("/services")}
+            className="flex items-center gap-3 p-3 text-blue-600 rounded-lg cursor-pointer hover:bg-blue-50 transition-colors duration-150"
+          >
+            <ArrowLeftRight size={18} />
+            Ganti Layanan
+          </div>
+
+
           <div 
             onClick={handleLogout}
             className="flex items-center gap-3 p-3 text-red-500 rounded-lg cursor-pointer hover:bg-red-50 transition-colors duration-150"

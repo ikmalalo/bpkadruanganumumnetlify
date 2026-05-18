@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import HomeHeader from "../components/HomeComponents/HomeHeader"
 import HomeContainer from "../components/HomeComponents/HomeContainer"
 import HomeFooter from "../components/HomeComponents/HomeFooter"
@@ -5,6 +6,9 @@ import HomeBackground from "../components/HomeComponents/HomeBackground"
 import "../index.css"
 
 export default function HomeSelect() {
+  useEffect(() => {
+    document.title = "Beranda | BPKAD - Sistem Manajemen"
+  }, [])
   return (
     <div className="h-screen bg-white flex flex-col items-center relative overflow-hidden">
       

@@ -1,73 +1,50 @@
-# React + TypeScript + Vite
+# Manajemen Ruangan Umum BPKAD (InfinityFree Version)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplikasi manajemen peminjaman ruangan dan galeri sertifikat BPKAD yang telah dimigrasi dari Supabase ke MySQL + PHP untuk mendukung hosting gratis di InfinityFree.
 
-Currently, two official plugins are available:
+## Tech Stack
+- **Frontend**: React + TypeScript + Vite + Tailwind CSS
+- **Backend**: PHP (untuk Database API)
+- **Database**: MySQL
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 Panduan Deployment (InfinityFree / Shared Hosting)
 
-## React Compiler
+Karena InfinityFree tidak mendukung runtime Node.js, ikuti langkah-langkah berikut untuk mengunggah aplikasi:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 1. Build Frontend di Lokal
+Jalankan perintah berikut di terminal komputer Anda:
+```bash
+npm run build
 ```
+Perintah ini akan menghasilkan folder bernama `dist`.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. Persiapan Database
+1. Buka cPanel InfinityFree dan buat database MySQL baru.
+2. Buka **phpMyAdmin** untuk database tersebut.
+3. Klik tab **Import** dan pilih file `bpkadumum (2).sql` yang ada di root project ini.
+4. Edit file `api/config.php` di komputer lokal Anda dan masukkan kredensial database dari InfinityFree:
+   ```php
+   $host = 'sqlXXX.infinityfree.com'; // Ambil dari cPanel
+   $db_name = 'epiz_XXX_nama_db';
+   $username = 'epiz_XXX';
+   $password = 'password_akun_anda';
+   ```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### 3. Unggah File ke htdocs
+Gunakan FTP (FileZilla) atau File Manager bawaan InfinityFree:
+1. Unggah **ISI** dari folder `dist` (file `index.html`, folder `assets`, dll) langsung ke dalam folder `htdocs`.
+2. Unggah folder `api` beserta isinya (seperti `config.php`, `login.php`, dll) ke dalam folder `htdocs`.
+3. Pastikan struktur di server seperti ini:
+   - `htdocs/index.html`
+   - `htdocs/assets/`
+   - `htdocs/api/config.php`
+   - `htdocs/api/uploads/` (Pastikan folder uploads ini ada agar fitur upload sertifikat berjalan)
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### 4. Selesai
+Aplikasi Anda kini bisa diakses melalui subdomain InfinityFree yang Anda buat!
+
+## Pengembangan Lokal
+Untuk menjalankan di lokal:
+1. Pastikan Anda memiliki XAMPP/Laragon berjalan dengan PHP & MySQL.
+2. Jalankan `npm install` dan `npm run dev`.
+3. Sesuaikan `api/config.php` untuk koneksi database lokal.

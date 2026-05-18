@@ -8,10 +8,11 @@ declare global {
 import logo from "../assets/images/logo.png"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
-import { ArrowLeft } from "lucide-react"
+import { Calendar, File as FileIcon, ArrowLeft } from "lucide-react"
+import PdfToImage from "../components/Common/PdfToImage"
 import { useNavigate } from "react-router-dom"
-import { supabase } from "../lib/supabaseClient"
 import { runAutoClean } from "../lib/autoClean"
+import { api } from "../lib/api"
 
 interface AgendaItem {
   id: number
@@ -82,13 +83,9 @@ export default function PreviewHorizontal() {
 
   const fetchData = async () => {
     try {
-      const { data: agendas, error: agendaError } = await supabase
-        .from('agenda_ruangan')
-        .select('*')
+      const agendas = await api.getAgendas();
 
-      if (agendaError) throw agendaError
-
-      if (agendas) {
+      if (Array.isArray(agendas)) {
         const modified = await runAutoClean(agendas);
         if (modified) {
           fetchData();
@@ -96,14 +93,10 @@ export default function PreviewHorizontal() {
         }
       }
 
-      const { data: certs, error: certError } = await supabase
-        .from('sertifikat')
-        .select('*')
+      const certs = await api.getInformasi();
 
-      if (certError) throw certError
-
-      setAllAgendas(agendas || [])
-      setAllCertificates(certs || [])
+      setAllAgendas(Array.isArray(agendas) ? agendas : [])
+      setAllCertificates(Array.isArray(certs) ? certs : [])
       setLoading(false)
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -117,7 +110,15 @@ export default function PreviewHorizontal() {
     return () => clearInterval(refreshInterval)
   }, [])
 
-  const itemsPerPageCount = 6
+  const [itemsPerPageCount, setItemsPerPageCount] = useState(window.innerHeight > 850 ? 6 : 5)
+
+  useEffect(() => {
+    const handleResize = () => {
+      setItemsPerPageCount(window.innerHeight > 850 ? 6 : 5)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const pages = useMemo(() => {
     const slides: SlideItem[] = []
@@ -171,10 +172,12 @@ export default function PreviewHorizontal() {
     })
 
     return slides
-  }, [allAgendas, allCertificates])
+  }, [allAgendas, allCertificates, itemsPerPageCount])
 
   const [currentPage, setCurrentPage] = useState(0)
   const [progress, setProgress] = useState(0)
+  const [pdfPage, setPdfPage] = useState(1) // This is now the START page of the grid
+  const [totalPages, setTotalPages] = useState(1)
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000)
@@ -182,12 +185,36 @@ export default function PreviewHorizontal() {
   }, [])
 
   useEffect(() => {
+    setPdfPage(1)
+    setTotalPages(1)
+  }, [currentPage])
+
+  useEffect(() => {
+    const currentSlide = pages[currentPage];
+    if (currentSlide?.type === 'CERTIFICATE' && currentSlide.data.foto.toLowerCase().endsWith('.pdf')) {
+      const interval = setInterval(() => {
+        setPdfPage(p => {
+          if (p < totalPages) return p + 1;
+          return 1;
+        });
+      }, 12000); // 12 seconds per page
+      return () => clearInterval(interval);
+    }
+  }, [pages, currentPage, totalPages]);
+
+  useEffect(() => {
     if (pages.length === 0) return
     const interval = 50
     // Agenda: 20 detik, Sertifikat: 15 detik
-    const currentSlideType = pages[currentPage]?.type;
-    const duration = currentSlideType === 'CERTIFICATE' ? 15000 : 20000;
+    const currentSlide = pages[currentPage];
+    const isPdf = currentSlide?.type === 'CERTIFICATE' && currentSlide.data.foto.toLowerCase().endsWith('.pdf');
+    const duration = isPdf ? (totalPages * 12000) + 5000 : (currentSlide?.type === 'CERTIFICATE' ? 15000 : 20000);
     const step = (interval / duration) * 100
+
+    // Jika totalPages baru saja terdeteksi (> 1), reset progress agar durasi mulai dari awal
+    if (isPdf && totalPages > 1 && progress > 2) {
+      setProgress(0);
+    }
 
     const timer = setInterval(() => {
       setProgress((prev) => {
@@ -199,7 +226,7 @@ export default function PreviewHorizontal() {
       })
     }, interval)
     return () => clearInterval(timer)
-  }, [pages.length, currentPage])
+  }, [pages.length, currentPage, totalPages])
 
   const handlePageClick = (index: number) => {
     setCurrentPage(index);
@@ -211,7 +238,7 @@ export default function PreviewHorizontal() {
   const pageTitle = useMemo(() => {
     if (!currentSlide) return "AGENDA RUANG RAPAT"
     if (currentSlide.type === 'AGENDA') return `AGENDA RUANG RAPAT ${currentSlide.category}`
-    return "PENGHARGAAN & SERTIFIKAT"
+    return "PENGUMUMAN & INFORMASI"
   }, [currentSlide])
 
   if (loading && allAgendas.length === 0) {
@@ -315,13 +342,25 @@ export default function PreviewHorizontal() {
               </tbody>
             </table>
           ) : currentSlide?.type === 'CERTIFICATE' ? (
-            <div className="flex-1 flex items-center justify-center bg-white/0 overflow-hidden p-10 animate-slide-right">
-                <img 
-                  src={currentSlide.data.foto} 
-                  alt="Sertifikat" 
-                  style={{ maxHeight: '72vh', maxWidth: '85vw' }}
-                  className="w-auto h-auto object-contain border-[12px] border-white rounded-lg" 
-                />
+            <div className="flex-1 flex items-center justify-center bg-white/0 overflow-hidden px-2 py-2 animate-slide-right w-full h-full">
+                {currentSlide.data.foto.toLowerCase().endsWith('.pdf') ? (
+                  <div className="w-full h-full flex items-center justify-center bg-transparent py-4">
+                    <PdfToImage 
+                      fileUrl={api.getAssetUrl(currentSlide.data.foto)}
+                      pageNumber={pdfPage}
+                      onLoaded={(total) => setTotalPages(total)}
+                      autoScroll={true}
+                      className="h-[90vh] w-[60vw] bg-white rounded-xl shadow-2xl overflow-hidden border-[8px] border-white"
+                    />
+                  </div>
+                ) : (
+                  <img 
+                    src={api.getAssetUrl(currentSlide.data.foto)} 
+                    alt="Informasi" 
+                    style={{ maxHeight: '72vh', maxWidth: '85vw' }}
+                    className="w-auto h-auto object-contain border-[12px] border-white rounded-lg" 
+                  />
+                )}
             </div>
             ) : null}
           </div>

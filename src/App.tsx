@@ -9,7 +9,7 @@ import Preview from "./pages/Preview"
 import PreviewHorizontal from "./pages/PreviewHorizontal"
 import PreviewVertikal from "./pages/PreviewVertikal"
 import Riwayat from "./pages/Riwayat"
-import UploadSertifikat from "./pages/UploadSertifikat"
+import UploadInformasi from "./pages/UploadInformasi"
 import KGBDashboard from "./pages/KGB/KGBDashboard"
 import KGBEmployeeList from "./pages/KGB/KGBEmployeeList"
 import KGBHistory from "./pages/KGB/KGBHistory"
@@ -63,7 +63,7 @@ export default function App() {
           <Route path="/rooms" element={<RoomDashboard />} />
           <Route path="/peminjaman" element={<Peminjaman />} />
           <Route path="/riwayat" element={<Riwayat />} />
-          <Route path="/upload-sertifikat" element={<UploadSertifikat />} />
+          <Route path="/upload-informasi" element={<UploadInformasi />} />
           <Route path="/konfirmasipeminjaman" element={<KonfirmasiPeminjaman />} />
 
           {/* KGB Dashboard */}

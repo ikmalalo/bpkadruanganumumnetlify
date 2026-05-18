@@ -15,6 +15,7 @@ const ruangOptions = [
   "Mahakam",
   "Sekretariat TAPD",
   "Nusantara",
+  "Batik",
 ]
 
 export default function DashboardFilter({

@@ -19,11 +19,11 @@ export default defineConfig({
     // 🔥 ini cuma buat LOCAL
     proxy: {
       "/api": {
-        target: "http://localhost:59489",
+        target: "http://localhost/bpkadumuminfinity",
         changeOrigin: true,
       },
       "/uploads": {
-        target: "http://localhost:59489",
+        target: "http://localhost/bpkadumuminfinity/api",
         changeOrigin: true,
       },
     },

@@ -1,10 +1,14 @@
-import { useState, useMemo } from "react"
-import { Download, Wallet, ChevronDown, ChevronLeft, ChevronRight, Calendar } from "lucide-react"
+import { useState, useMemo, useEffect } from "react"
+import { api } from "../../lib/api"
+import { Download, Wallet, ChevronDown, ChevronLeft, ChevronRight, Calendar, RotateCcw, Trash2, X, Check } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { formatIDRCurrency } from "../../lib/kgbUtils"
+import * as XLSX from "xlsx"
 
 /* ── Types ── */
 interface HistoryRecord {
   id: number
+  pegawai_id: number
   nip: string
   nama: string
   golongan: string
@@ -17,29 +21,27 @@ interface HistoryRecord {
   tanggalProses: string
 }
 
-/* ── Dummy Data ── */
-const dummyHistory: HistoryRecord[] = Array.from({ length: 24 }, (_, i) => ({
-  id: i + 1,
-  nip: `198501${String(12 + (i % 8)).padStart(2, "0")} 2010121 00${(i % 5) + 1}`,
-  nama: ["Ahmad Hidayat", "Siti Aminah", "Budi Santoso", "Diana Putri", "Eko Prasetyo", "Fajar Nugroho", "Galih Wicaksono", "Hesti Rahayu"][i % 8],
-  golongan: ["IV/c", "IV/b", "III/d", "III/c", "IV/a", "III/b", "II/d", "III/a"][i % 8],
-  mkg: `${8 + (i % 8) * 2} Thn`,
-  jabatan: ["Kepala Bidang", "Sekretaris", "Staf Ahli", "Analisis Data", "Kepala Sub Bag", "Programmer", "Operator", "Admin"][i % 8],
-  gajiLama: 4250000 + i * 50000,
-  gajiBaru: 4850000 + i * 50000,
-  periodeAwal: `01 Jan ${22 + (i % 3)}`,
-  periodeAkhir: `31 Des ${23 + (i % 3)}`,
-  tanggalProses: `${String((i % 28) + 1).padStart(2, "0")} Jan 2024`,
-}))
+/* ── Dummy Data (Removed) ── */
 
-const GOLONGAN_OPTIONS = ["Semua Golongan", "II/d", "III/a", "III/b", "III/c", "III/d", "IV/a", "IV/b", "IV/c"]
+const GOLONGAN_OPTIONS = ["Semua Golongan", "II/a", "II/b", "II/c", "II/d", "III/a", "III/b", "III/c", "III/d", "IV/a", "IV/b", "IV/c", "IV/d", "IV/e"]
 const JABATAN_OPTIONS  = ["Semua Jabatan", "Kepala Bidang", "Sekretaris", "Staf Ahli", "Analisis Data", "Kepala Sub Bag", "Programmer", "Operator", "Admin"]
 const TAMPILKAN_OPTIONS = [5, 10, 20, 50]
 
-const fmt = (n: number) => new Intl.NumberFormat("id-ID").format(n)
+const fmt = (v: any) => {
+  const n = typeof v === "number" ? v : parseInt(String(v).replace(/\./g, "").replace(/[^0-9]/g, "")) || 0
+  return new Intl.NumberFormat("id-ID").format(n)
+}
 
 export default function KGBHistory() {
   const navigate = useNavigate()
+  const [history, setHistory] = useState<HistoryRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  
+  // Undo Modal State
+  const [showUndoModal, setShowUndoModal] = useState(false)
+  const [undoTarget, setUndoTarget] = useState<{emp: any, records: HistoryRecord[]} | null>(null)
+  const [checkedUndoIds, setCheckedUndoIds] = useState<number[]>([])
 
   /* filters */
   const [search, setSearch]           = useState("")
@@ -53,9 +55,77 @@ export default function KGBHistory() {
   const [jabOpen, setJabOpen]     = useState(false)
   const [perOpen, setPerOpen]     = useState(false)
 
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const data = await api.getKGBHistory()
+      setHistory(data)
+    } catch (err: any) {
+      console.error("Gagal ambil riwayat:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  /* Selection Logic (for grouped view) */
+  const groupedHistory = useMemo(() => {
+    const groups: Record<number, HistoryRecord[]> = {}
+    history.forEach(r => {
+      if (!groups[r.pegawai_id]) groups[r.pegawai_id] = []
+      groups[r.pegawai_id].push(r)
+    })
+    
+    // Sort each group by date desc
+    return Object.values(groups).map(records => {
+      return records.sort((a,b) => new Date(b.tanggalProses).getTime() - new Date(a.tanggalProses).getTime())
+    })
+  }, [history])
+
+  const handleOpenUndo = (records: HistoryRecord[]) => {
+    setUndoTarget({ emp: records[0], records })
+    setCheckedUndoIds([records[0].id]) // Default select latest
+    setShowUndoModal(true)
+  }
+
+  const handleConfirmUndo = async () => {
+    if (checkedUndoIds.length === 0) return
+    
+    try {
+      const selectedRecords = history.filter(r => checkedUndoIds.includes(r.id))
+      
+      // We should revert to the earliest record's OLD state if we undo multiple, 
+      // but usually undoing the LATEST is what restores consistency.
+      // For simplicity, we take the one that is NOT being deleted as the new master, 
+      // or if all deleted, take the oldest's original state.
+      
+      const latestToUndo = selectedRecords.sort((a,b) => new Date(b.tanggalProses).getTime() - new Date(a.tanggalProses).getTime())[0]
+
+      const revertPayload = [{
+        id: latestToUndo.pegawai_id,
+        mkg: latestToUndo.mkg,
+        gaji: formatIDRCurrency(latestToUndo.gajiLama),
+        tahunAwal: latestToUndo.periodeAwal,
+        tahunAkhir: latestToUndo.periodeAkhir
+      }]
+
+      await api.bulkUpdateKGBEmployees(revertPayload)
+      await api.deleteKGBHistory(checkedUndoIds)
+      
+      setShowUndoModal(false)
+      fetchData()
+    } catch (err: any) {
+      alert("Gagal undo: " + err.message)
+    }
+  }
+
   /* filtered data */
   const filtered = useMemo(() => {
-    return dummyHistory.filter(r => {
+    return groupedHistory.filter(group => {
+      const r = group[0] // representative (latest)
       const matchSearch = search === "" ||
         r.nama.toLowerCase().includes(search.toLowerCase()) ||
         r.nip.includes(search)
@@ -63,7 +133,7 @@ export default function KGBHistory() {
       const matchJab  = jabFilter === "Semua Jabatan"  || r.jabatan  === jabFilter
       return matchSearch && matchGol && matchJab
     })
-  }, [search, golFilter, jabFilter])
+  }, [groupedHistory, search, golFilter, jabFilter])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage))
   const safePage   = Math.min(page, totalPages)
@@ -85,6 +155,27 @@ export default function KGBHistory() {
       pages.push(totalPages)
     }
     return pages
+  }
+
+  const handleExportExcel = () => {
+    if (history.length === 0) return
+    const exportData = history.map((r, i) => ({
+      "No": i + 1,
+      "NIP": r.nip,
+      "Nama Pegawai": r.nama,
+      "Golongan": r.golongan,
+      "MKG": r.mkg,
+      "Jabatan": r.jabatan,
+      "Gaji Lama": r.gajiLama,
+      "Gaji Baru": r.gajiBaru,
+      "Periode Awal": r.periodeAwal,
+      "Periode Akhir": r.periodeAkhir,
+      "Tanggal Proses": new Date(r.tanggalProses).toLocaleDateString("id-ID")
+    }))
+    const ws = XLSX.utils.json_to_sheet(exportData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Riwayat KGB")
+    XLSX.writeFile(wb, `Riwayat_KGB_${new Date().getTime()}.xlsx`)
   }
 
   return (
@@ -119,6 +210,14 @@ export default function KGBHistory() {
           border-radius: 12px; padding: 6px;
           box-shadow: 0 8px 32px -4px rgba(0,0,0,0.14);
           min-width: 160px;
+          max-height: 220px;
+          overflow-y: auto;
+          animation: kgbh-dropdown-in 0.2s cubic-bezier(0, 0, 0.2, 1);
+          transform-origin: top left;
+        }
+        @keyframes kgbh-dropdown-in {
+          from { opacity: 0; transform: translateY(-8px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
         .kgbh-dropdown-item {
           padding: 8px 12px; border-radius: 8px; cursor: pointer;
@@ -180,7 +279,7 @@ export default function KGBHistory() {
           </p>
         </div>
         <div style={{ display: "flex", gap: "10px", flexShrink: 0 }}>
-          <button className="kgbh-export-btn">
+          <button className="kgbh-export-btn" onClick={handleExportExcel}>
             <Download size={16} />
             <span>Export Excel</span>
           </button>
@@ -277,10 +376,10 @@ export default function KGBHistory() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
             <thead>
               <tr style={{ borderBottom: "2px solid #f3f4f6" }}>
-                {["No", "NIP & Nama Pegawai", "Golongan", "MKG", "Jabatan", "Gaji lama", "Gaji Baru", "Periode", "Tanggal Proses"].map((h, i) => (
+                {["No", "NIP & Nama Pegawai", "Golongan", "Total Riwayat", "Jabatan", "Gaji Terakhir", "Periode Terakhir", "Aksi"].map((h, i) => (
                   <th key={h} style={{
                     padding: "14px 16px",
-                    textAlign: i === 0 ? "center" : "left",
+                    textAlign: i === 0 || i === 7 ? "center" : "left",
                     fontSize: "11px", fontWeight: 700,
                     color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em",
                     whiteSpace: "nowrap",
@@ -293,13 +392,15 @@ export default function KGBHistory() {
             <tbody>
               {paged.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ padding: "48px", textAlign: "center", color: "#9ca3af", fontSize: "14px", fontWeight: 500 }}>
+                  <td colSpan={8} style={{ padding: "48px", textAlign: "center", color: "#9ca3af", fontSize: "14px", fontWeight: 500 }}>
                     Tidak ada data yang ditemukan
                   </td>
                 </tr>
-              ) : paged.map((r, idx) => (
-                <tr key={r.id} className="kgbh-row" style={{ borderBottom: "1px solid #f9fafb" }}>
-
+              ) : paged.map((group, idx) => {
+                const r = group[0] // Latest
+                return (
+                <tr key={r.pegawai_id} className="kgbh-row" style={{ borderBottom: "1px solid #f9fafb" }}>
+                  
                   {/* No */}
                   <td style={{ padding: "16px", textAlign: "center" }}>
                     <div style={{
@@ -329,19 +430,20 @@ export default function KGBHistory() {
                     </span>
                   </td>
 
-                  {/* MKG */}
-                  <td style={{ padding: "16px", fontWeight: 600, color: "#374151", whiteSpace: "nowrap" }}>
-                    {r.mkg}
+                  {/* Total Riwayat */}
+                  <td style={{ padding: "16px" }}>
+                    <span style={{
+                      background: "#f3f4f6", color: "#374151",
+                      padding: "4px 10px", borderRadius: "8px",
+                      fontWeight: 700, fontSize: "11px",
+                    }}>
+                      {group.length} Proses
+                    </span>
                   </td>
 
                   {/* Jabatan */}
                   <td style={{ padding: "16px", color: "#374151", fontWeight: 500, maxWidth: "130px" }}>
                     {r.jabatan}
-                  </td>
-
-                  {/* Gaji Lama */}
-                  <td style={{ padding: "16px", color: "#9ca3af", fontWeight: 500, textDecoration: "line-through", whiteSpace: "nowrap" }}>
-                    Rp.{fmt(r.gajiLama)}
                   </td>
 
                   {/* Gaji Baru */}
@@ -357,27 +459,52 @@ export default function KGBHistory() {
                       fontSize: "11px", fontWeight: 600, color: "#374151",
                       lineHeight: 1.5, whiteSpace: "nowrap",
                     }}>
-                      <div style={{ color: "#9ca3af", fontSize: "10px", fontWeight: 600 }}>2 Tahun</div>
-                      <div>{r.periodeAwal} – {r.periodeAkhir}</div>
+                      <div>
+                        {r.periodeAwal ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(r.periodeAwal)) : '-'} – {r.periodeAkhir ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(r.periodeAkhir)) : '-'}
+                      </div>
                     </div>
                   </td>
 
-                  {/* Tanggal Proses */}
-                  <td style={{ padding: "16px" }}>
-                    <div style={{
-                      display: "flex", alignItems: "center", gap: "6px",
-                      background: "#eff6ff", border: "1px solid #bfdbfe",
-                      borderRadius: "10px", padding: "6px 12px",
-                      fontWeight: 700, color: "#1d4ed8", fontSize: "12px",
-                      whiteSpace: "nowrap",
-                    }}>
-                      <Calendar size={13} strokeWidth={2.5} />
-                      {r.tanggalProses}
+                  {/* Aksi Buttons */}
+                  <td style={{ padding: "16px", textAlign: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                      <button 
+                        onClick={() => handleOpenUndo(group)}
+                        title="Undo Proses KGB"
+                        style={{
+                          width: "34px", height: "34px", borderRadius: "10px",
+                          background: "#fee2e2", color: "#ef4444",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          border: "none", cursor: "pointer", transition: "all 0.2s",
+                        }}
+                        onMouseOver={(e) => { e.currentTarget.style.background = "#fecaca"; e.currentTarget.style.transform = "scale(1.1)" }}
+                        onMouseOut={(e) => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.transform = "scale(1)" }}
+                      >
+                        <RotateCcw size={16} />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          if(window.confirm('Apakah Anda yakin ingin menghapus seluruh riwayat KGB untuk pegawai ini?')) {
+                            api.deleteKGBHistory(group.map(r => r.id)).then(() => fetchData()).catch((err: any) => alert('Gagal menghapus: ' + err.message));
+                          }
+                        }}
+                        title="Hapus Seluruh Riwayat"
+                        style={{
+                          width: "34px", height: "34px", borderRadius: "10px",
+                          background: "#f3f4f6", color: "#6b7280",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          border: "none", cursor: "pointer", transition: "all 0.2s",
+                        }}
+                        onMouseOver={(e) => { e.currentTarget.style.background = "#e5e7eb"; e.currentTarget.style.color = "#111827"; e.currentTarget.style.transform = "scale(1.1)" }}
+                        onMouseOut={(e) => { e.currentTarget.style.background = "#f3f4f6"; e.currentTarget.style.color = "#6b7280"; e.currentTarget.style.transform = "scale(1)" }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   </td>
 
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
@@ -419,6 +546,96 @@ export default function KGBHistory() {
           </button>
         </div>
       </div>
+
+      {/* ── UNDO MODAL ── */}
+      {showUndoModal && undoTarget && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 kgb-animate-fade">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowUndoModal(false)} />
+          <div className="relative bg-white w-full max-w-lg rounded-[28px] overflow-hidden shadow-2xl kgb-animate-pop" style={{ border: '1px solid #f3f4f6' }}>
+            
+            {/* Modal Header */}
+            <div style={{ padding: '32px 32px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ width: '48px', height: '48px', background: '#fee2e2', color: '#ef4444', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <RotateCcw size={22} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#111827' }}>Konfirmasi Undo</h3>
+                <p style={{ margin: '2px 0 0', fontSize: '13px', fontWeight: 500, color: '#6b7280' }}>{undoTarget.emp.nama}</p>
+              </div>
+              <button onClick={() => setShowUndoModal(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '0 32px 32px' }}>
+              <p style={{ fontSize: '12px', color: '#ef4444', background: '#fef2f2', padding: '10px 14px', borderRadius: '10px', marginBottom: '16px', fontWeight: 600 }}>
+                Catatan: Untuk menjaga konsistensi data, Anda hanya dapat melakukan undo pada riwayat yang paling baru secara berurutan.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '40vh', overflowY: 'auto', paddingRight: '4px' }}>
+                {undoTarget.records.map((r, i) => (
+                  <div 
+                    key={r.id} 
+                    style={{
+                      padding: '16px', borderRadius: '16px', border: '2px solid',
+                      borderColor: i === 0 ? '#ef4444' : '#e5e7eb',
+                      background: i === 0 ? '#fef2f2' : '#f9fafb',
+                      cursor: i === 0 ? 'default' : 'not-allowed', 
+                      opacity: i === 0 ? 1 : 0.6,
+                      transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '14px'
+                    }}
+                  >
+                    <div style={{
+                      width: '24px', height: '24px', borderRadius: '50%',
+                      border: '2px solid', borderColor: i === 0 ? '#ef4444' : '#d1d5db',
+                      background: i === 0 ? '#ef4444' : '#f3f4f6',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      {i === 0 && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'white' }} />}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>
+                        {r.periodeAwal ? new Date(r.periodeAwal).getFullYear() : '-'} – {r.periodeAkhir ? new Date(r.periodeAkhir).getFullYear() : '-'}
+                      </div>
+                      <div style={{ fontSize: '11px', fontWeight: 500, color: '#6b7280', marginTop: '2px' }}>
+                        Gaji: Rp.{fmt(r.gajiBaru)} (MKG: {r.mkg})
+                      </div>
+                    </div>
+                    {i === 0 ? (
+                      <span style={{ background: '#ef4444', color: 'white', fontSize: '9px', fontWeight: 800, padding: '2px 8px', borderRadius: '99px', textTransform: 'uppercase' }}>Siap di-Undo</span>
+                    ) : (
+                      <span style={{ background: '#9ca3af', color: 'white', fontSize: '9px', fontWeight: 800, padding: '2px 8px', borderRadius: '99px', textTransform: 'uppercase' }}>Terkunci</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ marginTop: '28px', display: 'flex', gap: '12px' }}>
+                <button 
+                  onClick={() => setShowUndoModal(false)}
+                  style={{ flex: 1, padding: '14px', borderRadius: '14px', border: '1px solid #e5e7eb', background: 'white', color: '#374151', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={handleConfirmUndo}
+                  disabled={checkedUndoIds.length === 0}
+                  style={{ 
+                    flex: 1, padding: '14px', borderRadius: '14px', border: 'none', 
+                    background: checkedUndoIds.length > 0 ? '#ef4444' : '#f3f4f6', 
+                    color: checkedUndoIds.length > 0 ? 'white' : '#9ca3af', 
+                    fontSize: '14px', fontWeight: 700, cursor: checkedUndoIds.length > 0 ? 'pointer' : 'default' 
+                  }}
+                >
+                  Konfirmasi Undo
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

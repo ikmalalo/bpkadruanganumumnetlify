@@ -1,22 +1,24 @@
 import { Navigate, Outlet } from "react-router-dom"
 import { useEffect, useState } from "react"
-import { supabase } from "../../lib/supabaseClient"
 
 export default function ProtectedRoute() {
-  const [session, setSession] = useState<any>(null)
+  const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
+    const checkAuth = () => {
+      const storedUser = localStorage.getItem('user')
+      if (storedUser) {
+        setUser(JSON.parse(storedUser))
+      }
       setLoading(false)
-    })
+    }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-    })
-
-    return () => subscription.unsubscribe()
+    checkAuth()
+    
+    // Listen for storage changes (optional, but good for multi-tab)
+    window.addEventListener('storage', checkAuth)
+    return () => window.removeEventListener('storage', checkAuth)
   }, [])
 
   if (loading) {
@@ -27,7 +29,7 @@ export default function ProtectedRoute() {
     )
   }
 
-  if (!session) {
+  if (!user) {
     return <Navigate to="/login" replace />
   }
 

@@ -61,10 +61,10 @@ export default function KGBStatCard({ label, value, icon, color }: Props) {
         </div>
         
         <div className="flex flex-col items-center">
-          <h3 className="text-4xl font-black text-gray-800 tracking-tighter mb-1">
+          <h3 className="text-5xl font-black text-gray-900 tracking-tighter mb-1">
             {value}
           </h3>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest text-center">
             {label}
           </p>
         </div>

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react"
-import { supabase } from "../lib/supabaseClient"
+import { api } from "../lib/api"
 import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react"
+import ConfirmPopup from "../components/Common/ConfirmPopup"
+import Notification from "../components/Common/Notification"
 
 interface AgendaItem {
   id: number
@@ -18,19 +20,27 @@ export default function Riwayat() {
   const [agendas, setAgendas] = useState<AgendaItem[]>([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
+  const [confirmPopup, setConfirmPopup] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  })
+  const [notification, setNotification] = useState({
+    show: false,
+    type: 'success' as 'success' | 'error' | 'info',
+    title: "",
+    message: ""
+  })
   const rowsPerPage = 10
 
   useEffect(() => {
     const fetchAgendas = async () => {
       try {
-        const { data, error } = await supabase
-          .from('agenda_ruangan')
-          .select('*')
-          .order('id', { ascending: false })
-
-        if (error) throw error
-
-        setAgendas(data || [])
+        const data = await api.getAgendas();
+        // Filter out items that are not in descending order or handle sorting here
+        const sortedData = [...data].sort((a: any, b: any) => b.id - a.id);
+        setAgendas(sortedData || [])
         setLoading(false)
       } catch (error) {
         console.error('Error fetching history:', error)
@@ -40,22 +50,30 @@ export default function Riwayat() {
     fetchAgendas()
   }, [])
 
-  const handleClearHistory = async () => {
-    if (!confirm("Apakah Anda yakin ingin menghapus semua riwayat peminjaman yang sudah selesai?")) return;
-    
-    try {
-      const { error } = await supabase
-        .from('agenda_ruangan')
-        .delete()
-        .eq('status', 'Selesai')
-
-      if (error) throw error
-
-      setAgendas(prev => prev.filter(a => a.status !== 'Selesai'));
-    } catch (error) {
-      console.error('Error clearing history:', error);
-      alert("Terjadi kesalahan saat menghapus riwayat.");
-    }
+  const handleClearHistory = () => {
+    setConfirmPopup({
+      isOpen: true,
+      title: "Hapus Riwayat",
+      message: "Apakah Anda yakin ingin menghapus semua riwayat peminjaman yang sudah selesai?",
+      onConfirm: async () => {
+        try {
+          const finishedAgendas = agendas.filter(a => a.status === 'Selesai');
+          for (const agenda of finishedAgendas) {
+            await api.deleteAgenda(agenda.id);
+          }
+          setAgendas(prev => prev.filter(a => a.status !== 'Selesai'));
+        } catch (error) {
+          console.error('Error clearing history:', error);
+          setNotification({
+            show: true,
+            type: 'error',
+            title: "Gagal",
+            message: "Terjadi kesalahan saat menghapus riwayat."
+          });
+        }
+        setConfirmPopup(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const totalPages = Math.ceil(agendas.length / rowsPerPage)
@@ -154,6 +172,22 @@ export default function Riwayat() {
           </div>
         </div>
       )}
+
+      <ConfirmPopup
+        isOpen={confirmPopup.isOpen}
+        title={confirmPopup.title}
+        message={confirmPopup.message}
+        onConfirm={confirmPopup.onConfirm}
+        onCancel={() => setConfirmPopup(prev => ({ ...prev, isOpen: false }))}
+      />
+
+      <Notification
+        show={notification.show}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+        onClose={() => setNotification(prev => ({ ...prev, show: false }))}
+      />
     </div>
   )
 }

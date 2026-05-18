@@ -1,8 +1,11 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
+import { api } from "../../lib/api"
 import {
   Search, Plus, Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight,
-  Users, X, Save, AlertTriangle, UserCheck
+  Users, X, Save, AlertTriangle, UserCheck, Download, Calendar
 } from "lucide-react"
+import { SALARY_DATA, formatGolKey, formatIDRCurrency } from "../../lib/kgbUtils"
+import * as XLSX from "xlsx"
 
 /* ─────────────── Types ─────────────── */
 interface Employee {
@@ -19,23 +22,8 @@ interface Employee {
 }
 
 /* ─────────────── Dummy Data ─────────────── */
-const initialData: Employee[] = [
-  { id: 1,  nip: "19850112 2010121 001", nama: "Ahmad Hidayat",    golongan: "IV/c", mkg: "12 Thn", jabatan: "Kepala Bidang TIK",  tahunAwal: "08/01/2022", tahunAkhir: "08/01/2024", gaji: "4.850.000", unit: "Bidang TIK" },
-  { id: 2,  nip: "19850113 2010121 002", nama: "Siti Aminah",      golongan: "IV/b", mkg: "10 Thn", jabatan: "Sekretaris",         tahunAwal: "15/03/2021", tahunAkhir: "15/03/2023", gaji: "4.250.000", unit: "Sekretariat" },
-  { id: 3,  nip: "19850114 2010121 003", nama: "Budi Santoso",     golongan: "III/d", mkg: "8 Thn", jabatan: "Staf Ahli",          tahunAwal: "10/06/2023", tahunAkhir: "10/06/2025", gaji: "3.850.000", unit: "Bidang Anggaran" },
-  { id: 4,  nip: "19850115 2010121 004", nama: "Diana Putri",      golongan: "III/c", mkg: "6 Thn", jabatan: "Analisis Data",      tahunAwal: "22/11/2022", tahunAkhir: "22/11/2024", gaji: "3.450.000", unit: "Bidang TIK" },
-  { id: 5,  nip: "19850116 2010121 005", nama: "Eko Prasetyo",     golongan: "IV/a", mkg: "14 Thn", jabatan: "Kepala Sub Bagian",  tahunAwal: "05/09/2020", tahunAkhir: "05/09/2022", gaji: "5.150.000", unit: "Sekretariat" },
-  { id: 6,  nip: "19850117 2010121 006", nama: "Fajar Nugroho",    golongan: "III/b", mkg: "5 Thn", jabatan: "Programmer",         tahunAwal: "01/04/2022", tahunAkhir: "01/04/2024", gaji: "3.200.000", unit: "Bidang TIK" },
-  { id: 7,  nip: "19850118 2010121 007", nama: "Galih Wicaksono",  golongan: "II/d",  mkg: "4 Thn", jabatan: "Operator",           tahunAwal: "17/07/2023", tahunAkhir: "17/07/2025", gaji: "2.900.000", unit: "Umum" },
-  { id: 8,  nip: "19850119 2010121 008", nama: "Hesti Rahayu",     golongan: "III/a", mkg: "3 Thn", jabatan: "Admin",              tahunAwal: "11/02/2021", tahunAkhir: "11/02/2023", gaji: "3.050.000", unit: "Sekretariat" },
-  { id: 9,  nip: "19850120 2010121 009", nama: "Irwan Santoso",    golongan: "III/c", mkg: "7 Thn", jabatan: "Analisis Keuangan",  tahunAwal: "03/05/2022", tahunAkhir: "03/05/2024", gaji: "3.600.000", unit: "Bidang Anggaran" },
-  { id: 10, nip: "19850121 2010121 010", nama: "Joko Widodo",      golongan: "IV/b", mkg: "11 Thn", jabatan: "Kepala Bidang",      tahunAwal: "20/08/2020", tahunAkhir: "20/08/2022", gaji: "4.500.000", unit: "Bidang Anggaran" },
-  { id: 11, nip: "19850122 2010121 011", nama: "Kartini Dewi",     golongan: "III/d", mkg: "9 Thn", jabatan: "Perencana",          tahunAwal: "14/01/2023", tahunAkhir: "14/01/2025", gaji: "3.750.000", unit: "Bidang Anggaran" },
-  { id: 12, nip: "19850123 2010121 012", nama: "Lukman Hakim",     golongan: "II/c",  mkg: "2 Thn", jabatan: "Staf",               tahunAwal: "25/09/2023", tahunAkhir: "25/09/2025", gaji: "2.750.000", unit: "Umum" },
-]
-
-const GOLONGAN_LIST = ["I/a","I/b","I/c","I/d","II/a","II/b","II/c","II/d","III/a","III/b","III/c","III/d","IV/a","IV/b","IV/c","IV/d","IV/e"]
-const UNIT_LIST     = ["Bidang TIK","Bidang Anggaran","Sekretariat","Umum"]
+const GOLONGAN_LIST = ["II/a","II/b","II/c","II/d","III/a","III/b","III/c","III/d","IV/a","IV/b","IV/c","IV/d","IV/e"]
+const UNIT_LIST     = ["Bidang Aset","Sekretariat","Bidang Anggaran","Bidang Perbendaharaan","Bidang Akuntansi"]
 const TAMPILKAN_OPTIONS = [5, 10, 20, 50]
 
 const EMPTY_FORM: Omit<Employee, "id"> = {
@@ -52,9 +40,84 @@ const avatarColor = (name: string) => {
   return colors[name.charCodeAt(0) % colors.length]
 }
 
+/* ─────────────── Custom Components ─────────────── */
+const CustomSelect = ({ value, onChange, options, placeholder, isOpen, setOpen }: any) => (
+  <div style={{ position: "relative" }}>
+    <div className="kgbel-input" onClick={() => setOpen(!isOpen)} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", cursor:"pointer", userSelect:"none" }}>
+      <span style={{ color: value ? "#111827" : "#9ca3af" }}>{value || placeholder}</span>
+      <ChevronDown size={16} style={{ color:"#f97316", transform: isOpen ? "rotate(180deg)" : "none", transition:"transform 0.3s" }}/>
+    </div>
+    <div className={`kgbel-dd-menu ${isOpen?"active":""}`} style={{ width:"100%", zIndex:300, top:"calc(100% + 4px)" }}>
+      {options.map((opt:any) => (
+        <div key={opt.value} className={`kgbel-dd-item ${value===opt.value?"active":""}`} onClick={()=>{onChange(opt.value);setOpen(false)}}>
+          {opt.label}
+        </div>
+      ))}
+    </div>
+  </div>
+)
+
+const MiniCalendar = ({ value, onChange, isOpen, setOpen }: any) => {
+  const [date, setDate] = useState(value ? new Date(value) : new Date());
+  const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  
+  const handleSelect = (d: number) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(d).padStart(2, '0');
+    onChange(`${y}-${m}-${day}`);
+    setOpen(false);
+  }
+  const months = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+  
+  return (
+    <div style={{ position: "relative" }}>
+      <div className="kgbel-input" onClick={() => setOpen(!isOpen)} style={{ display:"flex", justifyContent:"space-between", cursor:"pointer", userSelect:"none" }}>
+        <span style={{ color: value ? "#111827" : "#9ca3af" }}>{value || "Pilih tanggal"}</span>
+        <Calendar size={16} color="#f97316"/>
+      </div>
+      <div className={`kgbel-dd-menu ${isOpen?"active":""}`} style={{ width:"260px", padding:"12px", zIndex:300, top:"calc(100% + 4px)" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"10px" }}>
+          <button onClick={(e) => { e.preventDefault(); setDate(new Date(date.getFullYear(), date.getMonth()-1, 1)) }} style={{ background:"none", border:"none", cursor:"pointer", color:"#374151" }}><ChevronLeft size={16}/></button>
+          <span style={{ fontSize:"13px", fontWeight:700, color:"#111827" }}>{months[date.getMonth()]} {date.getFullYear()}</span>
+          <button onClick={(e) => { e.preventDefault(); setDate(new Date(date.getFullYear(), date.getMonth()+1, 1)) }} style={{ background:"none", border:"none", cursor:"pointer", color:"#374151" }}><ChevronRight size={16}/></button>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:"4px", textAlign:"center", fontSize:"12px", fontWeight:600, color:"#9ca3af", marginBottom:"4px" }}>
+          {["Min","Sen","Sel","Rab","Kam","Jum","Sab"].map(d => <div key={d}>{d}</div>)}
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:"4px" }}>
+          {Array.from({length: firstDay}).map((_,i) => <div key={`empty-${i}`}/>)}
+          {Array.from({length: daysInMonth}).map((_,i) => {
+            const d = i+1;
+            const isSelected = value === `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            return (
+              <button 
+                key={d} 
+                onClick={(e) => { e.preventDefault(); handleSelect(d) }}
+                style={{
+                  background: isSelected ? "#f97316" : "transparent",
+                  color: isSelected ? "white" : "#374151",
+                  border: "none", borderRadius: "6px",
+                  padding: "6px 0", cursor: "pointer",
+                  fontSize: "13px", fontWeight: 500,
+                  transition: "all 0.15s"
+                }}
+                onMouseEnter={e => { if(!isSelected){ e.currentTarget.style.background = "#fff7f0"; e.currentTarget.style.color = "#f97316" } }}
+                onMouseLeave={e => { if(!isSelected){ e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#374151" } }}
+              >{d}</button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ─────────────── Component ─────────────── */
 export default function KGBEmployeeList() {
-  const [employees, setEmployees] = useState<Employee[]>(initialData)
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [loading,   setLoading]   = useState(true)
   const [search,    setSearch]    = useState("")
   const [golFilter, setGolFilter] = useState("Semua Golongan")
   const [unitFilter,setUnitFilter]= useState("Semua Unit")
@@ -68,10 +131,36 @@ export default function KGBEmployeeList() {
 
   /* modal state */
   const [modalMode, setModalMode] = useState<"add"|"edit"|null>(null)
+  const [isClosing, setIsClosing] = useState(false)
   const [form,      setForm]      = useState<Omit<Employee,"id">>(EMPTY_FORM)
   const [editId,    setEditId]    = useState<number|null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Employee|null>(null)
   const [toast, setToast]         = useState<{msg: string; type: "success"|"danger"} | null>(null)
+
+  /* custom inputs state */
+  const [mGolOpen, setMGolOpen] = useState(false)
+  const [mMkgOpen, setMMkgOpen] = useState(false)
+  const [mUnitOpen, setMUnitOpen] = useState(false)
+  const [mDate1Open, setMDate1Open] = useState(false)
+  const [mDate2Open, setMDate2Open] = useState(false)
+
+
+  /* ── Fetch Data ── */
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const data = await api.getKGBEmployees()
+      setEmployees(data)
+    } catch (err: any) {
+      showToast("Gagal mengambil data pegawai", "danger")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [])
 
   /* ── filtered & paged ── */
   const filtered = useMemo(() => employees.filter(e => {
@@ -108,36 +197,90 @@ export default function KGBEmployeeList() {
   const openEdit = (emp: Employee) => {
     const { id, ...rest } = emp; setForm(rest); setEditId(id); setModalMode("edit")
   }
-  const closeModal = () => { setModalMode(null); setForm(EMPTY_FORM); setEditId(null) }
+  const closeModal = () => { 
+    setIsClosing(true)
+    setTimeout(() => {
+      setModalMode(null)
+      setForm(EMPTY_FORM)
+      setEditId(null)
+      setMGolOpen(false)
+      setMMkgOpen(false)
+      setMUnitOpen(false)
+      setMDate1Open(false)
+      setMDate2Open(false)
+      setIsClosing(false)
+    }, 250) // matches the popout animation duration
+  }
 
   const showToast = (msg: string, type: "success"|"danger") => {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 2800)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.nip || !form.nama || !form.golongan || !form.jabatan) return
-    if (modalMode === "add") {
-      const newId = Math.max(0, ...employees.map(e => e.id)) + 1
-      setEmployees(prev => [...prev, { id: newId, ...form }])
-      showToast("Pegawai berhasil ditambahkan!", "success")
-    } else if (modalMode === "edit" && editId) {
-      setEmployees(prev => prev.map(e => e.id === editId ? { id: editId, ...form } : e))
-      showToast("Data pegawai berhasil diperbarui!", "success")
+    try {
+      if (modalMode === "add") {
+        await api.addKGBEmployee(form)
+        showToast("Pegawai berhasil ditambahkan!", "success")
+      } else if (modalMode === "edit" && editId) {
+        await api.updateKGBEmployee({ id: editId, ...form })
+        showToast("Data pegawai berhasil diperbarui!", "success")
+      }
+      fetchData()
+      closeModal()
+    } catch (err: any) {
+      showToast(`Gagal menyimpan: ${err.message}`, "danger")
     }
-    closeModal()
   }
 
   const confirmDelete = (emp: Employee) => setDeleteTarget(emp)
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return
-    setEmployees(prev => prev.filter(e => e.id !== deleteTarget.id))
-    showToast(`${deleteTarget.nama} berhasil dihapus.`, "danger")
-    setDeleteTarget(null)
+    try {
+      await api.deleteKGBEmployee(deleteTarget.id)
+      showToast(`${deleteTarget.nama} berhasil dihapus.`, "danger")
+      setDeleteTarget(null)
+      fetchData()
+    } catch (err: any) {
+      showToast(`Gagal menghapus: ${err.message}`, "danger")
+    }
   }
 
-  const ff = (field: keyof typeof EMPTY_FORM, val: string) =>
-    setForm(prev => ({ ...prev, [field]: val }))
+  const ff = (field: keyof typeof EMPTY_FORM, val: string) => {
+    setForm(prev => {
+      const next = { ...prev, [field]: val }
+      // Otomatis tambah 2 tahun jika yang diisi adalah Tahun Akhir (tahunAwal)
+      if (field === "tahunAwal" && val) {
+        const d = new Date(val)
+        if (!isNaN(d.getTime())) {
+          d.setFullYear(d.getFullYear() + 2)
+          next.tahunAkhir = d.toISOString().split('T')[0]
+        }
+      }
+      return next
+    })
+  }
+
+  const handleExportExcel = () => {
+    if (employees.length === 0) return
+    const exportData = employees.map((e, i) => ({
+      "No": i + 1,
+      "NIP": e.nip,
+      "Nama Pegawai": e.nama,
+      "Golongan": e.golongan,
+      "MKG": e.mkg,
+      "Jabatan": e.jabatan,
+      "Unit Kerja": e.unit,
+      "Gaji Pokok": e.gaji,
+      "Tahun Akhir": e.tahunAwal,
+      "Tahun Akan Datang": e.tahunAkhir
+    }))
+    const ws = XLSX.utils.json_to_sheet(exportData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Data Pegawai")
+    XLSX.writeFile(wb, `Data_Pegawai_KGB_${new Date().getTime()}.xlsx`)
+  }
 
   /* ─────────────── Render ─────────────── */
   return (
@@ -147,10 +290,15 @@ export default function KGBEmployeeList() {
       <style>{`
         @keyframes kgbel-fadein { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
         @keyframes kgbel-popin  { 0%{opacity:0;transform:scale(0.93) translateY(16px)} 65%{transform:scale(1.02) translateY(-2px)} 100%{opacity:1;transform:scale(1) translateY(0)} }
+        @keyframes kgbel-popout { 0%{opacity:1;transform:scale(1) translateY(0)} 100%{opacity:0;transform:scale(0.95) translateY(10px)} }
+        @keyframes kgbel-fadeout { from{opacity:1} to{opacity:0} }
         @keyframes kgbel-toast  { 0%{opacity:0;transform:translateY(20px)} 10%{opacity:1;transform:translateY(0)} 85%{opacity:1} 100%{opacity:0;transform:translateY(-8px)} }
 
         .kgbel-fade { animation: kgbel-fadein 0.35s ease-out both; }
         .kgbel-pop  { animation: kgbel-popin  0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
+        .kgbel-pop.closing { animation: kgbel-popout 0.25s cubic-bezier(0.4, 0, 1, 1) both; }
+        .kgbel-overlay { animation: kgbel-fadein 0.35s ease-out both; }
+        .kgbel-overlay.closing { animation: kgbel-fadeout 0.25s ease-out both; }
         .kgbel-toast-anim { animation: kgbel-toast 2.8s ease forwards; }
 
         .kgbel-dd-btn {
@@ -166,8 +314,26 @@ export default function KGBEmployeeList() {
           position:absolute; top:calc(100% + 6px); left:0; z-index:60;
           background:white; border:1px solid #e5e7eb;
           border-radius:12px; padding:6px;
-          box-shadow:0 8px 32px -4px rgba(0,0,0,.14);
+          box-shadow:0 10px 40px -6px rgba(0,0,0,.15);
           min-width:180px;
+          max-height: 250px;
+          overflow-y: auto;
+
+          /* Smooth transition setup */
+          opacity: 0;
+          visibility: hidden;
+          transform: translateY(-12px) scale(0.95);
+          filter: blur(4px);
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          transform-origin: top left;
+          pointer-events: none;
+        }
+        .kgbel-dd-menu.active {
+          opacity: 1;
+          visibility: visible;
+          transform: translateY(0) scale(1);
+          filter: blur(0);
+          pointer-events: auto;
         }
         .kgbel-dd-item { padding:8px 12px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:500; color:#374151; transition:background .12s; }
         .kgbel-dd-item:hover,
@@ -191,11 +357,42 @@ export default function KGBEmployeeList() {
           width:100%; padding:10px 14px;
           border:1.5px solid #e5e7eb; border-radius:10px;
           font-size:13px; font-weight:500; color:#111827; outline:none;
-          transition:border-color .15s, box-shadow .15s;
+          transition:all .2s ease;
           font-family:inherit;
+          background: white;
         }
-        .kgbel-input:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,115,22,.12); }
-        .kgbel-select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:36px; }
+        .kgbel-input:focus { 
+          border-color:#f97316; 
+          box-shadow:0 0 0 4px rgba(249,115,22,.12), 0 4px 12px -2px rgba(249,115,22,0.1); 
+          background: #fffaf7;
+        }
+        .kgbel-select { 
+          appearance:none; 
+          background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f97316' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); 
+          background-repeat:no-repeat; background-position:right 14px center; padding-right:40px; 
+          cursor: pointer;
+        }
+        .kgbel-input[type="date"] {
+          position: relative;
+          cursor: pointer;
+        }
+        .kgbel-input[type="date"]::-webkit-calendar-picker-indicator {
+          position: absolute;
+          top: 0; left: 0; right: 0; bottom: 0;
+          width: auto; height: auto;
+          color: transparent;
+          background: transparent;
+          cursor: pointer;
+          z-index: 10;
+        }
+        .kgbel-date-wrapper { position: relative; }
+        .kgbel-date-icon {
+          position: absolute;
+          right: 14px; top: 50%;
+          transform: translateY(-50%);
+          color: #f97316;
+          pointer-events: none;
+        }
 
         .kgbel-save-btn {
           display:flex; align-items:center; gap:8px;
@@ -267,6 +464,11 @@ export default function KGBEmployeeList() {
             />
           </div>
 
+          {/* Export */}
+          <button onClick={handleExportExcel} className="kgbel-cancel-btn" style={{ padding: "10px 16px", borderRadius: "12px", gap: "6px" }}>
+            <Download size={16}/> Export
+          </button>
+
           {/* Tambah */}
           <button onClick={openAdd} style={{
             display:"flex", alignItems:"center", gap:"8px",
@@ -289,7 +491,6 @@ export default function KGBEmployeeList() {
       {(() => {
         const total = employees.length
         const groups = [
-          { label: "Golongan I",   prefix: "I/",   bg: "#f0fdf4", color: "#16a34a", bar: "#22c55e" },
           { label: "Golongan II",  prefix: "II/",  bg: "#eff6ff", color: "#2563eb", bar: "#3b82f6" },
           { label: "Golongan III", prefix: "III/", bg: "#fdf4ff", color: "#9333ea", bar: "#a855f7" },
           { label: "Golongan IV",  prefix: "IV/",  bg: "#fff7f0", color: "#ea580c", bar: "#f97316" },
@@ -369,31 +570,27 @@ export default function KGBEmployeeList() {
             {/* Golongan */}
             <div style={{ position:"relative" }}>
               <button className="kgbel-dd-btn" onClick={() => { setGolOpen(!golOpen); setUnitOpen(false); setPerOpen(false) }}>
-                <ChevronDown size={13}/>{golFilter}
+                <ChevronDown size={13} style={{ transform: golOpen ? "rotate(180deg)" : "none", transition: "transform 0.3s" }}/>{golFilter}
               </button>
-              {golOpen && (
-                <div className="kgbel-dd-menu" style={{ maxHeight:"220px",overflowY:"auto" }}>
-                  {["Semua Golongan",...GOLONGAN_LIST].map(g => (
-                    <div key={g} className={`kgbel-dd-item ${golFilter===g?"active":""}`}
-                      onClick={() => { setGolFilter(g); setGolOpen(false); setPage(1) }}>{g}</div>
-                  ))}
-                </div>
-              )}
+              <div className={`kgbel-dd-menu ${golOpen ? "active" : ""}`}>
+                {["Semua Golongan",...GOLONGAN_LIST].map(g => (
+                  <div key={g} className={`kgbel-dd-item ${golFilter===g?"active":""}`}
+                    onClick={() => { setGolFilter(g); setGolOpen(false); setPage(1) }}>{g}</div>
+                ))}
+              </div>
             </div>
 
             {/* Unit */}
             <div style={{ position:"relative" }}>
               <button className="kgbel-dd-btn" onClick={() => { setUnitOpen(!unitOpen); setGolOpen(false); setPerOpen(false) }}>
-                <ChevronDown size={13}/>{unitFilter}
+                <ChevronDown size={13} style={{ transform: unitOpen ? "rotate(180deg)" : "none", transition: "transform 0.3s" }}/>{unitFilter}
               </button>
-              {unitOpen && (
-                <div className="kgbel-dd-menu">
-                  {["Semua Unit",...UNIT_LIST].map(u => (
-                    <div key={u} className={`kgbel-dd-item ${unitFilter===u?"active":""}`}
-                      onClick={() => { setUnitFilter(u); setUnitOpen(false); setPage(1) }}>{u}</div>
-                  ))}
-                </div>
-              )}
+              <div className={`kgbel-dd-menu ${unitOpen ? "active" : ""}`}>
+                {["Semua Unit",...UNIT_LIST].map(u => (
+                  <div key={u} className={`kgbel-dd-item ${unitFilter===u?"active":""}`}
+                    onClick={() => { setUnitFilter(u); setUnitOpen(false); setPage(1) }}>{u}</div>
+                ))}
+              </div>
             </div>
 
             {/* Per page */}
@@ -481,8 +678,12 @@ export default function KGBEmployeeList() {
                     {/* Periode */}
                     <td style={{ padding:"16px" }}>
                       <div style={{ fontSize:"11px",fontWeight:600,color:"#374151",whiteSpace:"nowrap",lineHeight:1.6 }}>
-                        <span style={{ color:"#9ca3af" }}>{emp.tahunAwal}</span>
-                        <span style={{ display:"block" }}>→ {emp.tahunAkhir}</span>
+                        <span style={{ color:"#9ca3af" }}>
+                          {emp.tahunAwal ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(emp.tahunAwal)) : '-'}
+                        </span>
+                        <span style={{ display:"block" }}>
+                          → {emp.tahunAkhir ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(emp.tahunAkhir)) : '-'}
+                        </span>
                       </div>
                     </td>
 
@@ -530,17 +731,17 @@ export default function KGBEmployeeList() {
       {/* ══════════════════════════════════════════
           ADD / EDIT MODAL
       ══════════════════════════════════════════ */}
-      {modalMode && (
-        <div style={{ position:"fixed",inset:0,zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:"24px",fontFamily:"inherit" }}>
-          <div style={{ position:"absolute",inset:0,background:"rgba(0,0,0,0.45)",backdropFilter:"blur(4px)" }} onClick={closeModal}/>
-          <div className="kgbel-pop" style={{
+      {(modalMode || isClosing) && (
+        <div style={{ position:"fixed",inset:0,zIndex:200,display:"flex",padding:"40px 24px",fontFamily:"inherit", overflowY:"auto" }}>
+          <div className={`kgbel-overlay ${isClosing ? "closing" : ""}`} style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",backdropFilter:"blur(4px)" }} onClick={closeModal}/>
+          <div className={`kgbel-pop ${isClosing ? "closing" : ""}`} style={{
             position:"relative", background:"white",
             borderRadius:"24px", width:"100%", maxWidth:"560px",
             boxShadow:"0 24px 80px -12px rgba(0,0,0,.28)",
-            overflow:"hidden",
+            margin: "auto"
           }}>
             {/* Modal header */}
-            <div style={{ background:"linear-gradient(135deg,#fb923c,#f97316,#ea580c)", padding:"22px 28px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div style={{ background:"linear-gradient(135deg,#fb923c,#f97316,#ea580c)", padding:"22px 28px", display:"flex", alignItems:"center", justifyContent:"space-between", borderTopLeftRadius:"24px", borderTopRightRadius:"24px" }}>
               <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
                 <div style={{ width:"40px",height:"40px",borderRadius:"12px",background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center" }}>
                   {modalMode==="add" ? <Plus size={20} color="white"/> : <Pencil size={20} color="white"/>}
@@ -560,7 +761,7 @@ export default function KGBEmployeeList() {
             </div>
 
             {/* Modal body */}
-            <div style={{ padding:"28px", display:"flex", flexDirection:"column", gap:"18px", maxHeight:"65vh", overflowY:"auto" }}>
+            <div style={{ padding:"28px", display:"flex", flexDirection:"column", gap:"18px" }}>
 
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px" }}>
                 <div style={{ gridColumn:"1/-1" }}>
@@ -574,15 +775,35 @@ export default function KGBEmployeeList() {
                 </div>
 
                 <div>
-                  <label style={{ fontSize:"12px",fontWeight:700,color:"#374151",display:"block",marginBottom:"6px" }}>Golongan <span style={{color:"#ef4444"}}>*</span></label>
-                  <select className="kgbel-input kgbel-select" value={form.golongan} onChange={e=>ff("golongan",e.target.value)}>
-                    {GOLONGAN_LIST.map(g => <option key={g}>{g}</option>)}
-                  </select>
+                  <label style={{ fontSize: "12px", fontWeight: 700, color: "#374151", display: "block", marginBottom: "6px" }}>Golongan <span style={{ color: "#ef4444" }}>*</span></label>
+                  <CustomSelect 
+                    value={form.golongan} 
+                    onChange={(val: string) => { setForm(prev => ({ ...prev, golongan: val, gaji: "", mkg: "" })); }}
+                    options={GOLONGAN_LIST.map(g => ({ label: g, value: g }))}
+                    isOpen={mGolOpen} setOpen={(v:boolean)=>{setMGolOpen(v);setMMkgOpen(false);setMUnitOpen(false);setMDate1Open(false);setMDate2Open(false)}}
+                    placeholder="Pilih Golongan"
+                  />
                 </div>
 
                 <div>
-                  <label style={{ fontSize:"12px",fontWeight:700,color:"#374151",display:"block",marginBottom:"6px" }}>MKG</label>
-                  <input className="kgbel-input" value={form.mkg} onChange={e=>ff("mkg",e.target.value)} placeholder="cth. 12 Thn"/>
+                  <label style={{ fontSize: "12px", fontWeight: 700, color: "#374151", display: "block", marginBottom: "6px" }}>MKG</label>
+                  <CustomSelect 
+                    value={form.mkg} 
+                    onChange={(val: string) => {
+                      const golKey = formatGolKey(form.golongan);
+                      const tableData = SALARY_DATA[golKey] || {};
+                      const numericMKG = parseInt(val);
+                      const salaryVal = tableData[numericMKG];
+                      setForm(prev => ({ ...prev, mkg: val, gaji: salaryVal ? formatIDRCurrency(salaryVal) : "" }));
+                    }}
+                    options={
+                      Object.keys(SALARY_DATA[formatGolKey(form.golongan)] || {})
+                        .map(Number).sort((a,b)=>a-b)
+                        .map(m => ({ label: `${String(m).padStart(2,'0')} Thn`, value: `${String(m).padStart(2,'0')} Thn` }))
+                    }
+                    isOpen={mMkgOpen} setOpen={(v:boolean)=>{setMMkgOpen(v);setMGolOpen(false);setMUnitOpen(false);setMDate1Open(false);setMDate2Open(false)}}
+                    placeholder="Pilih MKG..."
+                  />
                 </div>
 
                 <div>
@@ -592,24 +813,40 @@ export default function KGBEmployeeList() {
 
                 <div>
                   <label style={{ fontSize:"12px",fontWeight:700,color:"#374151",display:"block",marginBottom:"6px" }}>Unit Kerja</label>
-                  <select className="kgbel-input kgbel-select" value={form.unit} onChange={e=>ff("unit",e.target.value)}>
-                    {UNIT_LIST.map(u => <option key={u}>{u}</option>)}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ fontSize:"12px",fontWeight:700,color:"#374151",display:"block",marginBottom:"6px" }}>Tahun Awal</label>
-                  <input className="kgbel-input" value={form.tahunAwal} onChange={e=>ff("tahunAwal",e.target.value)} placeholder="cth. 08/01/2022"/>
+                  <CustomSelect 
+                    value={form.unit} 
+                    onChange={(val: string) => ff("unit", val)}
+                    options={UNIT_LIST.map(u => ({ label: u, value: u }))}
+                    isOpen={mUnitOpen} setOpen={(v:boolean)=>{setMUnitOpen(v);setMGolOpen(false);setMMkgOpen(false);setMDate1Open(false);setMDate2Open(false)}}
+                    placeholder="Pilih Unit Kerja"
+                  />
                 </div>
 
                 <div>
                   <label style={{ fontSize:"12px",fontWeight:700,color:"#374151",display:"block",marginBottom:"6px" }}>Tahun Akhir</label>
-                  <input className="kgbel-input" value={form.tahunAkhir} onChange={e=>ff("tahunAkhir",e.target.value)} placeholder="cth. 08/01/2024"/>
+                  <MiniCalendar 
+                    value={form.tahunAwal} onChange={(val: string) => ff("tahunAwal", val)}
+                    isOpen={mDate1Open} setOpen={(v:boolean)=>{setMDate1Open(v);setMGolOpen(false);setMMkgOpen(false);setMUnitOpen(false);setMDate2Open(false)}}
+                  />
                 </div>
 
-                <div style={{ gridColumn:"1/-1" }}>
-                  <label style={{ fontSize:"12px",fontWeight:700,color:"#374151",display:"block",marginBottom:"6px" }}>Gaji Pokok</label>
-                  <input className="kgbel-input" value={form.gaji} onChange={e=>ff("gaji",e.target.value)} placeholder="cth. 4.850.000"/>
+                <div>
+                  <label style={{ fontSize:"12px",fontWeight:700,color:"#374151",display:"block",marginBottom:"6px" }}>Tahun Akan Datang</label>
+                  <MiniCalendar 
+                    value={form.tahunAkhir} onChange={(val: string) => ff("tahunAkhir", val)}
+                    isOpen={mDate2Open} setOpen={(v:boolean)=>{setMDate2Open(v);setMGolOpen(false);setMMkgOpen(false);setMUnitOpen(false);setMDate1Open(false)}}
+                  />
+                </div>
+
+                <div style={{ gridColumn: "1/-1" }}>
+                  <label style={{ fontSize: "12px", fontWeight: 700, color: "#374151", display: "block", marginBottom: "6px" }}>Gaji Pokok</label>
+                  <input 
+                    className="kgbel-input" 
+                    style={{ background: "#f9fafb", cursor: "not-allowed" }}
+                    value={form.gaji ? `Rp ${form.gaji}` : ""} 
+                    readOnly
+                    placeholder="Pilih MKG untuk melihat gaji"
+                  />
                 </div>
               </div>
             </div>

@@ -2,24 +2,27 @@ import { Download, Play } from "lucide-react"
 
 interface KGBActionsProps {
   onProcess: () => void
+  onExport?: () => void
   disabled?: boolean
 }
 
-export default function KGBActions({ onProcess, disabled }: KGBActionsProps) {
+export default function KGBActions({ onProcess, onExport, disabled }: KGBActionsProps) {
   return (
     <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "10px", justifyContent: "flex-end" }}>
 
       {/* Export Excel — outline style */}
-      <button style={{
-        display: "flex", alignItems: "center", gap: "8px",
-        padding: "10px 20px",
-        background: "white",
-        border: "1px solid #e5e7eb",
-        borderRadius: "12px",
-        fontSize: "13px", fontWeight: 700, color: "#374151",
-        cursor: "pointer",
-        transition: "all 0.2s",
-      }}
+      <button 
+        onClick={onExport}
+        style={{
+          display: "flex", alignItems: "center", gap: "8px",
+          padding: "10px 20px",
+          background: "white",
+          border: "1px solid #e5e7eb",
+          borderRadius: "12px",
+          fontSize: "13px", fontWeight: 700, color: "#374151",
+          cursor: "pointer",
+          transition: "all 0.2s",
+        }}
         onMouseEnter={e => {
           e.currentTarget.style.borderColor = "#f97316"
           e.currentTarget.style.color = "#f97316"

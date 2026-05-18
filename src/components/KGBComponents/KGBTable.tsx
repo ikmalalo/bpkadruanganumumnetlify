@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react"
-import { ChevronDown, ChevronLeft, ChevronRight, Pencil, Trash2, Calendar } from "lucide-react"
+import { useState, useMemo, useEffect } from "react"
+import { ChevronDown, ChevronLeft, ChevronRight, Calendar, AlertTriangle } from "lucide-react"
+import { isKGBDueSoon, getDaysRemaining } from "../../lib/kgbUtils"
 
 interface KGBTableProps {
   data: any[]
@@ -9,7 +10,7 @@ interface KGBTableProps {
   onToggleAll: () => void
 }
 
-const GOLONGAN_OPTIONS = ["Semua Golongan", "I/a", "I/b", "II/a", "II/b", "II/c", "II/d", "III/a", "III/b", "III/c", "III/d", "IV/a", "IV/b", "IV/c", "IV/d", "IV/e"]
+const GOLONGAN_OPTIONS = ["Semua Golongan", "II/a", "II/b", "II/c", "II/d", "III/a", "III/b", "III/c", "III/d", "IV/a", "IV/b", "IV/c", "IV/d", "IV/e"]
 const JABATAN_OPTIONS  = ["Semua Jabatan", "Kepala Bidang TIK", "Sekretaris", "Staf Ahli", "Analisis Data", "Kepala Sub Bagian", "Programmer", "Operator", "Admin"]
 const TAMPILKAN_OPTIONS = [5, 10, 20, 50]
 
@@ -26,6 +27,17 @@ export default function KGBTable({ data, searchQuery, selectedIds, onToggleId, o
   const [golOpen, setGolOpen] = useState(false)
   const [jabOpen, setJabOpen] = useState(false)
   const [perOpen, setPerOpen] = useState(false)
+
+  // Drag selection state
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragMode, setDragMode] = useState<"select" | "deselect">("select")
+
+  // Handle global mouse up to stop dragging
+  useEffect(() => {
+    const handleGlobalMouseUp = () => setIsDragging(false)
+    window.addEventListener("mouseup", handleGlobalMouseUp)
+    return () => window.removeEventListener("mouseup", handleGlobalMouseUp)
+  }, [])
 
   const filtered = useMemo(() => {
     return data.filter(r => {
@@ -44,15 +56,19 @@ export default function KGBTable({ data, searchQuery, selectedIds, onToggleId, o
   const handlePage = (p: number) => { if (p >= 1 && p <= totalPages) setPage(p) }
 
   const pageNumbers = () => {
-    const pages: (number | "...")[] = []
-    if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i)
-    } else {
-      pages.push(1)
-      if (safePage > 3) pages.push("...")
-      for (let i = Math.max(2, safePage - 1); i <= Math.min(totalPages - 1, safePage + 1); i++) pages.push(i)
-      if (safePage < totalPages - 2) pages.push("...")
-      pages.push(totalPages)
+    const pages: number[] = []
+    const maxPagesToShow = 5
+    
+    let startPage = Math.max(1, safePage - Math.floor(maxPagesToShow / 2))
+    let endPage = startPage + maxPagesToShow - 1
+
+    if (endPage > totalPages) {
+      endPage = totalPages
+      startPage = Math.max(1, endPage - maxPagesToShow + 1)
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i)
     }
     return pages
   }
@@ -75,8 +91,26 @@ export default function KGBTable({ data, searchQuery, selectedIds, onToggleId, o
           position: absolute; top: calc(100% + 6px); right: 0; z-index: 50;
           background: white; border: 1px solid #e5e7eb;
           border-radius: 12px; padding: 6px;
-          box-shadow: 0 8px 32px -4px rgba(0,0,0,0.14);
-          min-width: 160px;
+          box-shadow: 0 10px 40px -6px rgba(0,0,0,0.15);
+          min-width: 170px;
+          max-height: 250px;
+          overflow-y: auto;
+          
+          /* Smooth transition setup */
+          opacity: 0;
+          visibility: hidden;
+          transform: translateY(-12px) scale(0.95);
+          filter: blur(4px);
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          transform-origin: top right;
+          pointer-events: none;
+        }
+        .kgbt-dropdown-menu.active {
+          opacity: 1;
+          visibility: visible;
+          transform: translateY(0) scale(1);
+          filter: blur(0);
+          pointer-events: auto;
         }
         .kgbt-dropdown-item {
           padding: 8px 12px; border-radius: 8px; cursor: pointer;
@@ -90,19 +124,42 @@ export default function KGBTable({ data, searchQuery, selectedIds, onToggleId, o
         .kgbt-row:hover { background: #fffaf7; }
 
         .kgbt-page-btn {
-          width: 34px; height: 34px; border-radius: 8px;
           display: flex; align-items: center; justify-content: center;
-          font-size: 13px; font-weight: 700; cursor: pointer; border: none;
-          transition: background 0.15s, color 0.15s;
+          font-weight: 700; cursor: pointer; border: none;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .kgbt-page-btn.active { background: #f97316; color: white; box-shadow: 0 4px 12px -2px rgba(249,115,22,0.45); }
-        .kgbt-page-btn:not(.active) { background: white; color: #374151; border: 1px solid #e5e7eb; }
-        .kgbt-page-btn:not(.active):hover { background: #fff7f0; color: #f97316; border-color: #fed7aa; }
-        .kgbt-page-btn:disabled { opacity: 0.35; cursor: default; }
+        .kgbt-page-btn.active { 
+          width: 34px; height: 34px; border-radius: 8px; font-size: 13px;
+          background: #f97316; color: white; box-shadow: 0 4px 12px -2px rgba(249,115,22,0.45); 
+        }
+        .kgbt-page-btn:not(.active) { 
+          width: 28px; height: 28px; border-radius: 6px; font-size: 11px;
+          background: white; color: #6b7280; border: 1px solid #e5e7eb; 
+        }
+        .kgbt-page-btn:not(.active):hover { 
+          background: #fff7f0; color: #f97316; border-color: #fed7aa; transform: scale(1.05);
+        }
+        .kgbt-page-btn:disabled { opacity: 0.35; cursor: default; transform: none; }
 
         .kgbt-checkbox {
           width: 16px; height: 16px; border-radius: 5px;
           accent-color: #f97316; cursor: pointer;
+        }
+
+        .kgbt-row-urgent {
+          background: #fff1f2 !important;
+          border-left: 4px solid #ef4444 !important;
+        }
+        .kgbt-row-urgent:hover { background: #fee2e2 !important; }
+
+        @keyframes pulse-red {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.1); opacity: 0.7; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .pulse-urgent {
+          animation: pulse-red 2s infinite;
+          color: #ef4444;
         }
       `}</style>
 
@@ -150,52 +207,46 @@ export default function KGBTable({ data, searchQuery, selectedIds, onToggleId, o
             {/* Golongan dropdown */}
             <div style={{ position: "relative" }}>
               <button className="kgbt-dropdown-btn" onClick={() => { setGolOpen(!golOpen); setJabOpen(false); setPerOpen(false) }}>
-                <ChevronDown size={13} /> {golFilter}
+                <ChevronDown size={13} style={{ transform: golOpen ? "rotate(180deg)" : "none", transition: "transform 0.3s" }} /> {golFilter}
               </button>
-              {golOpen && (
-                <div className="kgbt-dropdown-menu">
-                  {GOLONGAN_OPTIONS.map(g => (
-                    <div key={g} className={`kgbt-dropdown-item ${golFilter === g ? "active" : ""}`}
-                      onClick={() => { setGolFilter(g); setGolOpen(false); setPage(1) }}>
-                      {g}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className={`kgbt-dropdown-menu ${golOpen ? "active" : ""}`}>
+                {GOLONGAN_OPTIONS.map(g => (
+                  <div key={g} className={`kgbt-dropdown-item ${golFilter === g ? "active" : ""}`}
+                    onClick={() => { setGolFilter(g); setGolOpen(false); setPage(1) }}>
+                    {g}
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Jabatan dropdown */}
             <div style={{ position: "relative" }}>
               <button className="kgbt-dropdown-btn" onClick={() => { setJabOpen(!jabOpen); setGolOpen(false); setPerOpen(false) }}>
-                <ChevronDown size={13} /> {jabFilter}
+                <ChevronDown size={13} style={{ transform: jabOpen ? "rotate(180deg)" : "none", transition: "transform 0.3s" }} /> {jabFilter}
               </button>
-              {jabOpen && (
-                <div className="kgbt-dropdown-menu">
-                  {JABATAN_OPTIONS.map(j => (
-                    <div key={j} className={`kgbt-dropdown-item ${jabFilter === j ? "active" : ""}`}
-                      onClick={() => { setJabFilter(j); setJabOpen(false); setPage(1) }}>
-                      {j}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className={`kgbt-dropdown-menu ${jabOpen ? "active" : ""}`}>
+                {JABATAN_OPTIONS.map(j => (
+                  <div key={j} className={`kgbt-dropdown-item ${jabFilter === j ? "active" : ""}`}
+                    onClick={() => { setJabFilter(j); setJabOpen(false); setPage(1) }}>
+                    {j}
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Per page dropdown */}
             <div style={{ position: "relative" }}>
               <button className="kgbt-dropdown-btn" onClick={() => { setPerOpen(!perOpen); setGolOpen(false); setJabOpen(false) }}>
-                <ChevronDown size={13} /> Tampilkan {perPage}
+                <ChevronDown size={13} style={{ transform: perOpen ? "rotate(180deg)" : "none", transition: "transform 0.3s" }} /> Tampilkan {perPage}
               </button>
-              {perOpen && (
-                <div className="kgbt-dropdown-menu">
-                  {TAMPILKAN_OPTIONS.map(n => (
-                    <div key={n} className={`kgbt-dropdown-item ${perPage === n ? "active" : ""}`}
-                      onClick={() => { setPerPage(n); setPerOpen(false); setPage(1) }}>
-                      Tampilkan {n}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className={`kgbt-dropdown-menu ${perOpen ? "active" : ""}`}>
+                {TAMPILKAN_OPTIONS.map(n => (
+                  <div key={n} className={`kgbt-dropdown-item ${perPage === n ? "active" : ""}`}
+                    onClick={() => { setPerPage(n); setPerOpen(false); setPage(1) }}>
+                    Tampilkan {n}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -208,7 +259,7 @@ export default function KGBTable({ data, searchQuery, selectedIds, onToggleId, o
                 <th style={{ padding: "14px 16px", width: "40px", textAlign: "center" }}>
                   <input type="checkbox" className="kgbt-checkbox" checked={isAllSelected} onChange={onToggleAll} />
                 </th>
-                {["No", "NIP & Nama Pegawai", "Golongan", "MKG", "Jabatan", "Gaji Pokok", "Tahun Awal", "Tahun Akhir", "Aksi"].map((h, i) => (
+                {["No", "NIP & Nama Pegawai", "Golongan", "MKG", "Jabatan", "Gaji Pokok", "Tahun Akhir", "Tahun Yang Akan Datang"].map((h, i) => (
                   <th key={h} style={{
                     padding: "14px 16px",
                     textAlign: i === 0 || i === 2 || i === 3 ? "center" : i === 5 ? "right" : i === 6 || i === 7 ? "center" : "left",
@@ -230,14 +281,31 @@ export default function KGBTable({ data, searchQuery, selectedIds, onToggleId, o
                 </tr>
               ) : paged.map((item, idx) => {
                 const isSelected = selectedIds.includes(item.id)
+                const isUrgent = isKGBDueSoon(item.tahunAkhir)
+                const daysRemaining = getDaysRemaining(item.tahunAkhir)
                 const gajiNum = parseInt(String(item.gaji).replace(/\./g, "").replace(/[^0-9]/g, ""))
                 return (
                   <tr
                     key={item.id}
-                    className="kgbt-row"
+                    className={`kgbt-row ${isUrgent && !isSelected ? "kgbt-row-urgent" : ""}`}
+                    onMouseDown={(e) => {
+                      if ((e.target as HTMLElement).closest('button')) return;
+                      setIsDragging(true);
+                      const mode = isSelected ? "deselect" : "select";
+                      setDragMode(mode);
+                      onToggleId(item.id);
+                    }}
+                    onMouseEnter={() => {
+                      if (!isDragging) return;
+                      if (dragMode === "select" && !isSelected) onToggleId(item.id);
+                      if (dragMode === "deselect" && isSelected) onToggleId(item.id);
+                    }}
                     style={{
                       borderBottom: "1px solid #f9fafb",
                       background: isSelected ? "#fffaf7" : undefined,
+                      cursor: "pointer",
+                      userSelect: "none",
+                      position: "relative"
                     }}
                   >
                     {/* Checkbox */}
@@ -246,7 +314,7 @@ export default function KGBTable({ data, searchQuery, selectedIds, onToggleId, o
                         type="checkbox"
                         className="kgbt-checkbox"
                         checked={isSelected}
-                        onChange={() => onToggleId(item.id)}
+                        readOnly // Changed to readOnly as row click handles it
                       />
                     </td>
 
@@ -297,21 +365,44 @@ export default function KGBTable({ data, searchQuery, selectedIds, onToggleId, o
                       {fmt(gajiNum)}
                     </td>
 
-                    {/* Tahun Awal */}
+                    {/* Tahun Akhir (Was Tahun Awal) */}
                     <td style={{ padding: "16px", textAlign: "center" }}>
                       <div style={{
                         display: "inline-flex", alignItems: "center", gap: "6px",
-                        background: "#eff6ff", border: "1px solid #bfdbfe",
+                        background: isUrgent ? "#fef2f2" : "#eff6ff", 
+                        border: isUrgent ? "1px solid #fecaca" : "1px solid #bfdbfe",
                         borderRadius: "10px", padding: "5px 10px",
-                        fontWeight: 600, color: "#1d4ed8", fontSize: "11px",
+                        fontWeight: 700, color: isUrgent ? "#dc2626" : "#1d4ed8", fontSize: "11px",
                         whiteSpace: "nowrap",
+                        position: "relative"
                       }}>
-                        <Calendar size={12} strokeWidth={2.5} />
-                        {item.tahunAwal}
+                        {isUrgent ? (
+                          <AlertTriangle size={12} className="pulse-urgent" />
+                        ) : (
+                          <Calendar size={12} strokeWidth={2.5} />
+                        )}
+                        {item.tahunAkhir ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(item.tahunAkhir)) : '-'}
+                        {isUrgent && (
+                          <span style={{
+                            position: "absolute",
+                            top: "-18px",
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            background: "#ef4444",
+                            color: "white",
+                            fontSize: "9px",
+                            padding: "2px 6px",
+                            borderRadius: "4px",
+                            whiteSpace: "nowrap",
+                            boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                          }}>
+                            {daysRemaining} hari lagi
+                          </span>
+                        )}
                       </div>
                     </td>
 
-                    {/* Tahun Akhir */}
+                    {/* Tahun Yang Akan Datang (Was Tahun Akhir) */}
                     <td style={{ padding: "16px", textAlign: "center" }}>
                       <div style={{
                         display: "inline-flex", alignItems: "center", gap: "6px",
@@ -321,33 +412,12 @@ export default function KGBTable({ data, searchQuery, selectedIds, onToggleId, o
                         whiteSpace: "nowrap",
                       }}>
                         <Calendar size={12} strokeWidth={2.5} />
-                        {item.tahunAkhir}
-                      </div>
-                    </td>
-
-                    {/* Aksi */}
-                    <td style={{ padding: "16px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <button style={{
-                          padding: "6px", borderRadius: "8px", border: "none",
-                          background: "#eff6ff", color: "#3b82f6", cursor: "pointer",
-                          transition: "background 0.15s",
-                        }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "#dbeafe")}
-                          onMouseLeave={e => (e.currentTarget.style.background = "#eff6ff")}
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button style={{
-                          padding: "6px", borderRadius: "8px", border: "none",
-                          background: "#fef2f2", color: "#ef4444", cursor: "pointer",
-                          transition: "background 0.15s",
-                        }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "#fee2e2")}
-                          onMouseLeave={e => (e.currentTarget.style.background = "#fef2f2")}
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {(() => {
+                          if (!item.tahunAkhir) return '-';
+                          const d = new Date(item.tahunAkhir);
+                          d.setFullYear(d.getFullYear() + 2);
+                          return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
+                        })()}
                       </div>
                     </td>
                   </tr>

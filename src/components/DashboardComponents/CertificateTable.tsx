@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { Trash2, Calendar, User, Award, Eye, X } from "lucide-react"
+import { Trash2, Calendar, User, Award, Eye, X, FileText } from "lucide-react"
+import PdfToImage from "../Common/PdfToImage"
 
 interface Certificate {
   id: number
@@ -14,6 +15,8 @@ interface Props {
   onDelete: (id: number) => void
 }
 
+import { api } from "../../lib/api"
+
 export default function CertificateTable({ certificates, onDelete }: Props) {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null)
 
@@ -21,7 +24,7 @@ export default function CertificateTable({ certificates, onDelete }: Props) {
     <section className="mt-12">
       <h3 className="text-lg font-bold mb-4 text-gray-700 uppercase tracking-tight flex items-center gap-2">
         <div className="w-1.5 h-6 bg-yellow-500 rounded-full"></div>
-        Daftar Sertifikat Terupload
+        Daftar Informasi Terupload
       </h3>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -30,10 +33,10 @@ export default function CertificateTable({ certificates, onDelete }: Props) {
             <thead className="bg-yellow-500 text-white text-xs uppercase tracking-wider">
               <tr>
                 <th className="p-4 text-center">NO</th>
-                <th className="p-4 text-left">NAMA PENERIMA</th>
-                <th className="p-4 text-left">PENGHARGAAN</th>
+                <th className="p-4 text-left">JUDUL / NAMA INFORMASI</th>
+                <th className="p-4 text-left">KATEGORI</th>
                 <th className="p-4 text-center">TANGGAL</th>
-                <th className="p-4 text-center">FOTO</th>
+                <th className="p-4 text-center">FILE</th>
                 <th className="p-4 text-center">AKSI</th>
               </tr>
             </thead>
@@ -64,7 +67,7 @@ export default function CertificateTable({ certificates, onDelete }: Props) {
                       <button 
                         onClick={() => setSelectedPhoto(cert.foto)}
                         className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                        title="Lihat Sertifikat"
+                        title="Lihat Informasi"
                       >
                         <Eye size={16} />
                       </button>
@@ -83,7 +86,7 @@ export default function CertificateTable({ certificates, onDelete }: Props) {
               ) : (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-gray-400 italic">
-                    Belum ada sertifikat yang diupload
+                    Belum ada informasi yang diupload
                   </td>
                 </tr>
               )}
@@ -102,11 +105,19 @@ export default function CertificateTable({ certificates, onDelete }: Props) {
             >
               <X size={24} />
             </button>
-            <div className="p-2">
-              <img src={selectedPhoto} alt="Sertifikat" className="w-full h-auto max-h-[80vh] object-contain rounded-lg" />
+            <div className="p-2 h-[80vh]">
+              {selectedPhoto.toLowerCase().endsWith('.pdf') ? (
+                <PdfToImage 
+                  fileUrl={api.getAssetUrl(selectedPhoto)}
+                  pageNumber={1}
+                  className="h-[75vh] aspect-[1/1.414] bg-white rounded-lg shadow-inner overflow-hidden border border-gray-100"
+                />
+              ) : (
+                <img src={api.getAssetUrl(selectedPhoto)} alt="Informasi" className="w-full h-auto max-h-[80vh] object-contain rounded-lg" />
+              )}
             </div>
             <div className="p-4 bg-gray-50 border-t flex justify-center">
-               <p className="text-sm text-gray-500 font-medium italic text-center">Pratinjau Sertifikat</p>
+               <p className="text-sm text-gray-500 font-medium italic text-center">Pratinjau Informasi</p>
             </div>
           </div>
         </div>
