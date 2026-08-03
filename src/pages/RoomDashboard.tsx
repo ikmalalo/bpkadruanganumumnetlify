@@ -7,7 +7,6 @@ import Toast from "../components/DashboardComponents/Toast"
 import ConfirmPopup from "../components/Common/ConfirmPopup"
 import "../index.css"
 import { api } from "../lib/api"
-import { runAutoClean } from "../lib/autoClean"
 
 export default function RoomDashboard() {
 
@@ -39,16 +38,8 @@ export default function RoomDashboard() {
       // Fetch Agendas
       const agendas = await api.getAgendas();
 
-      if (agendas) {
-        const modified = await runAutoClean(agendas);
-        if (modified) {
-          fetchData();
-          return;
-        }
-      }
-      
-      const bpkad = agendas.filter((item: any) => item.type === 'BPKAD' && item.status !== 'Selesai')
-      const pemkot = agendas.filter((item: any) => item.type === 'PEMKOT' && item.status !== 'Selesai')
+      const bpkad = agendas.filter((item: any) => item.type === 'BPKAD')
+      const pemkot = agendas.filter((item: any) => item.type === 'PEMKOT')
       
       setBpkadData(bpkad)
       setPemkotData(pemkot)

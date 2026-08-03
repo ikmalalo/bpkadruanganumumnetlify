@@ -34,20 +34,21 @@ export default function KonfirmasiPeminjaman() {
     dihadiri: ""
   }
 
-  const timeToMin = (t: string, referenceStart: number | null = null) => {
-    if (!t) return referenceStart !== null ? referenceStart + 180 : 0;
+  const timeToMin = (t: string, referenceStart: number | null = null, defaultAddMinutes: number = 180) => {
+    if (!t) return referenceStart !== null ? referenceStart + defaultAddMinutes : 0;
     const clean = t.toString().trim().toLowerCase().replace('.', ':');
-    if (clean.includes('selesai')) return referenceStart !== null ? referenceStart + 180 : 1439;
+    if (clean.includes('selesai')) return referenceStart !== null ? referenceStart + defaultAddMinutes : 1439;
     const match = clean.match(/(\d{1,2}):(\d{1,2})/);
-    if (!match) return referenceStart !== null ? referenceStart + 180 : 0;
+    if (!match) return referenceStart !== null ? referenceStart + defaultAddMinutes : 0;
     const h = parseInt(match[1]) || 0;
     const m = parseInt(match[2]) || 0;
     return h * 60 + m;
   };
 
-  const checkConflict = async (ruangan: string, tanggal: string, waktuMulai: string, waktuSelesai: string, excludeId = null) => {
-    const sm = timeToMin(waktuMulai);
-    const se = timeToMin(waktuSelesai, sm);
+  const checkConflict = async (ruangan: string, tanggal: string, waktuMulai: string, waktuSelesai: string, jenisRuangan: string, excludeId = null) => {
+    const addMinutes = jenisRuangan === 'pemkot' ? 300 : 180;
+    const sm = timeToMin(waktuMulai, null, addMinutes);
+    const se = timeToMin(waktuSelesai, sm, addMinutes);
     
     // Fetch all agendas and filter locally to minimize API complexity for now
     const agendas = await api.getAgendas();
@@ -59,8 +60,9 @@ export default function KonfirmasiPeminjaman() {
     
     for (const row of existing) {
       const timeParts = row.pukul.split(/\s*[-–—]\s*/);
-      const exs = timeToMin(timeParts[0]);
-      const exe = timeToMin(timeParts[1], exs);
+      const rowAddMin = row.type === 'PEMKOT' ? 300 : 180;
+      const exs = timeToMin(timeParts[0], null, rowAddMin);
+      const exe = timeToMin(timeParts[1], exs, rowAddMin);
       
       if (sm < exe && se > exs) return true;
     }
@@ -73,7 +75,7 @@ export default function KonfirmasiPeminjaman() {
 
     try {
       // 1. Check for double booking
-      const hasConflict = await checkConflict(data.ruangan, data.tanggal, data.waktuMulai, data.waktuSelesai, isEdit ? agendaId : null);
+      const hasConflict = await checkConflict(data.ruangan, data.tanggal, data.waktuMulai, data.waktuSelesai, data.jenisRuangan, isEdit ? agendaId : null);
       if (hasConflict) {
         setNotification({
           show: true,

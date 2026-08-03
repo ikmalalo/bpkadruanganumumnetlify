@@ -38,9 +38,10 @@ export const runAutoClean = async (agendas: any[]) => {
     startDate.setHours(parseInt(matchStart[1]), parseInt(matchStart[2]), 0, 0);
 
     if (waktuSelesaiStr.toLowerCase() === "selesai") {
-      // Dynamic length since it's "Sampai Selesai" (limit 3h for both)
+      // Dynamic length since it's "Sampai Selesai" (PEMKOT 5 hours, BPKAD 3 hours)
+      const durationHours = agenda.type === "PEMKOT" ? 5 : 3;
       expiryDate.setHours(parseInt(matchStart[1]), parseInt(matchStart[2]), 0, 0);
-      expiryDate.setHours(expiryDate.getHours() + 3);
+      expiryDate.setHours(expiryDate.getHours() + durationHours);
     } else {
       // Fixed end time (e.g. "10:00")
       const matchEnd = waktuSelesaiStr.match(/(\d{1,2})[:.](\d{1,2})/);
