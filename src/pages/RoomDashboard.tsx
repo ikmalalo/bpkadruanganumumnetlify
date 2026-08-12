@@ -7,6 +7,7 @@ import Toast from "../components/DashboardComponents/Toast"
 import ConfirmPopup from "../components/Common/ConfirmPopup"
 import "../index.css"
 import { api } from "../lib/api"
+import { runAutoClean } from "../lib/autoClean"
 
 export default function RoomDashboard() {
 
@@ -38,8 +39,20 @@ export default function RoomDashboard() {
       // Fetch Agendas
       const agendas = await api.getAgendas();
 
-      const bpkad = agendas.filter((item: any) => item.type === 'BPKAD')
-      const pemkot = agendas.filter((item: any) => item.type === 'PEMKOT')
+      if (Array.isArray(agendas)) {
+        const modified = await runAutoClean(agendas);
+        if (modified) {
+          fetchData();
+          return;
+        }
+      }
+
+      const activeAgendas = Array.isArray(agendas)
+        ? agendas.filter((item: any) => item.status !== 'Selesai')
+        : [];
+
+      const bpkad = activeAgendas.filter((item: any) => item.type === 'BPKAD')
+      const pemkot = activeAgendas.filter((item: any) => item.type === 'PEMKOT')
       
       setBpkadData(bpkad)
       setPemkotData(pemkot)
@@ -55,6 +68,8 @@ export default function RoomDashboard() {
   useEffect(() => {
     document.title = "Dashboard Ruangan | BPKAD"
     fetchData()
+    const interval = setInterval(fetchData, 30000)
+    return () => clearInterval(interval)
   }, [])
 
   const handleDeleteInformasi = (id: number) => {

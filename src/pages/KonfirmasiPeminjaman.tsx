@@ -53,6 +53,7 @@ export default function KonfirmasiPeminjaman() {
     // Fetch all agendas and filter locally to minimize API complexity for now
     const agendas = await api.getAgendas();
     const existing = agendas.filter((item: any) => 
+      item.status !== 'Selesai' &&
       item.tempat.trim() === ruangan.trim() && 
       item.tanggal.trim() === tanggal.trim() &&
       (!excludeId || item.id != excludeId)

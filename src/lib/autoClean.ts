@@ -1,17 +1,34 @@
 import { api } from "./api";
 
 const monthMap: { [key: string]: number } = {
-  'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'Mei': 4, 'Jun': 5,
-  'Jul': 6, 'Agu': 7, 'Sep': 8, 'Okt': 9, 'Nov': 10, 'Des': 11
+  'jan': 0, 'januari': 0,
+  'feb': 1, 'februari': 1,
+  'mar': 2, 'maret': 2,
+  'apr': 3, 'april': 3,
+  'mei': 4,
+  'jun': 5, 'juni': 5,
+  'jul': 6, 'juli': 6,
+  'agu': 7, 'agt': 7, 'agus': 7, 'agustus': 7,
+  'sep': 8, 'september': 8,
+  'okt': 9, 'oktober': 9,
+  'nov': 10, 'november': 10,
+  'des': 11, 'desember': 11
 };
 
 const parseIndoDate = (dateStr: string) => {
-  const match = dateStr.match(/, (\d{1,2}) (\w{3}) (\d{4})/);
-  if (!match) return new Date(0);
-  const day = parseInt(match[1]);
-  const monthStr = match[2];
-  const year = parseInt(match[3]);
-  return new Date(year, monthMap[monthStr] || 0, day);
+  if (!dateStr) return new Date(0);
+  const cleanStr = dateStr.toLowerCase().replace(/^[a-z]+\s*,?\s*/, '').trim(); // Remove day name e.g. "senin, " or "senin "
+  const parts = cleanStr.split(/\s+/);
+  if (parts.length < 3) return new Date(0);
+  
+  const day = parseInt(parts[0]);
+  const monthStr = parts[1];
+  const year = parseInt(parts[2]);
+
+  if (isNaN(day) || isNaN(year) || monthMap[monthStr] === undefined) {
+    return new Date(0);
+  }
+  return new Date(year, monthMap[monthStr], day);
 };
 
 export const runAutoClean = async (agendas: any[]) => {
